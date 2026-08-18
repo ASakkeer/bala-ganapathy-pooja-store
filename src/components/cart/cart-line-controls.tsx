@@ -1,0 +1,117 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  snapshotFromPayload,
+  useCartUi,
+  type CartMutationPayload,
+} from "@/components/cart/cart-provider";
+import { cn } from "@/lib/cn";
+import { loginHref } from "@/lib/login-next";
+
+export function CartLineControls({
+  variantId,
+  qty,
+  stockQty,
+  productName,
+  compact = false,
+}: {
+  variantId: string;
+  qty: number;
+  stockQty: number;
+  productName: string;
+  compact?: boolean;
+}) {
+  const router = useRouter();
+  const { applySnapshot } = useCartUi();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+
+  async function update(nextQty: number) {
+    if (pending) {
+      return;
+    }
+
+    setPending(true);
+    setError("");
+
+    try {
+      const method = nextQty === 0 ? "DELETE" : "PATCH";
+      const response = await fetch("/api/cart/items", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        cache: "no-store",
+        body: JSON.stringify(nextQty === 0 ? { variantId } : { variantId, qty: nextQty }),
+      });
+      const payload = (await response.json()) as CartMutationPayload;
+
+      if (response.status === 401) {
+        router.push(loginHref("/cart"));
+        return;
+      }
+
+      if (!response.ok) {
+        setError(payload.error ?? "Could not update cart.");
+        return;
+      }
+
+      applySnapshot(snapshotFromPayload(payload));
+      router.refresh();
+    } catch {
+      setError("Could not update cart.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="flex w-full flex-col gap-2">
+      <div className={cn("flex items-center gap-2", compact && "w-full")}>
+        <div
+          className={cn(
+            "inline-flex items-center rounded-full bg-brand/[0.05]",
+            compact && "w-full justify-between",
+          )}
+        >
+          <button
+            type="button"
+            className="inline-flex size-11 items-center justify-center"
+            aria-label={`Decrease quantity of ${productName}`}
+            disabled={pending || (!compact && qty <= 1)}
+            onClick={() => update(qty <= 1 ? 0 : qty - 1)}
+          >
+            −
+          </button>
+          <span
+            className="min-w-8 text-center tabular-nums"
+            aria-label={`Quantity of ${productName}`}
+          >
+            {qty}
+          </span>
+          <button
+            type="button"
+            className="inline-flex size-11 items-center justify-center"
+            aria-label={`Increase quantity of ${productName}`}
+            disabled={pending || qty >= stockQty}
+            onClick={() => update(qty + 1)}
+          >
+            +
+          </button>
+        </div>
+        {compact ? null : (
+          <button
+            type="button"
+            className="inline-flex min-h-11 items-center px-3 text-sm text-muted hover:text-danger"
+            disabled={pending}
+            onClick={() => update(0)}
+          >
+            Remove
+          </button>
+        )}
+      </div>
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
+    </div>
+  );
+}
