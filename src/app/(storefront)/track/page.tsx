@@ -20,7 +20,7 @@ export default async function TrackPage({
   const initialNumber = orderParam?.trim() ?? "";
 
   return (
-    <div className="flex min-h-[calc(100dvh-14rem)] flex-1 flex-col py-6 md:py-8">
+    <div className="flex flex-1 flex-col">
       <TrackForm
         initialNumber={initialNumber}
         phones={listedPhones(settings?.phones)}

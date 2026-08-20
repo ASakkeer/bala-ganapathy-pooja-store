@@ -6,6 +6,7 @@ import { getSession } from "@/server/auth";
 import { redirect } from "next/navigation";
 import { loginHref } from "@/lib/login-next";
 import { Container } from "@/components/ui/container";
+import { Icon } from "@/components/ui/icon";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +16,10 @@ export const metadata: Metadata = {
 };
 
 const links = [
-  { href: "/admin", name: "Overview" },
-  { href: "/admin/products", name: "Products" },
-  { href: "/admin/orders", name: "Orders" },
-  { href: "/admin/settings", name: "Settings" },
+  { href: "/admin", name: "Overview", icon: "chart-simple" },
+  { href: "/admin/products", name: "Products", icon: "boxes-stacked" },
+  { href: "/admin/orders", name: "Orders", icon: "receipt" },
+  { href: "/admin/settings", name: "Settings", icon: "gear" },
 ];
 
 export default async function AdminLayout({
@@ -47,15 +48,17 @@ export default async function AdminLayout({
               <Link
                 key={link.href}
                 href={link.href}
-                className="inline-flex min-h-11 items-center rounded-full px-3 text-sm text-text hover:bg-brand/5 hover:text-brand"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-sm text-text hover:bg-brand/5 hover:text-brand"
               >
+                <Icon name={link.icon} className="text-xs" />
                 {link.name}
               </Link>
             ))}
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm">
             <span className="text-muted">{session.phone}</span>
-            <Link href="/" className="text-brand hover:underline">
+            <Link href="/" className="inline-flex items-center gap-2 text-brand hover:underline">
+              <Icon name="store" className="text-xs" />
               Storefront
             </Link>
           </div>

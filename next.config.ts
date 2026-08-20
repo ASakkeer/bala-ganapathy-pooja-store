@@ -1,10 +1,16 @@
 import type { NextConfig } from "next";
 import { CATALOG_REDIRECTS } from "./src/content/catalog";
+import {
+  IMMUTABLE_UPLOAD_CACHE_CONTROL,
+  PRIVATE_CACHE_CONTROL,
+  PUBLIC_ASSET_CACHE_CONTROL,
+} from "./src/lib/cache";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
   images: {
     formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 60 * 60 * 24 * 30,
     remotePatterns: [
       {
         protocol: "https",
@@ -16,7 +22,47 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/assets/:path*",
-        headers: [{ key: "Cache-Control", value: "public, max-age=0, must-revalidate" }],
+        headers: [{ key: "Cache-Control", value: PUBLIC_ASSET_CACHE_CONTROL }],
+      },
+      {
+        source: "/uploads/:path*",
+        headers: [{ key: "Cache-Control", value: IMMUTABLE_UPLOAD_CACHE_CONTROL }],
+      },
+      {
+        source: "/api/:path*",
+        headers: [{ key: "Cache-Control", value: PRIVATE_CACHE_CONTROL }],
+      },
+      {
+        source: "/account/:path*",
+        headers: [{ key: "Cache-Control", value: PRIVATE_CACHE_CONTROL }],
+      },
+      {
+        source: "/cart",
+        headers: [{ key: "Cache-Control", value: PRIVATE_CACHE_CONTROL }],
+      },
+      {
+        source: "/cart/:path*",
+        headers: [{ key: "Cache-Control", value: PRIVATE_CACHE_CONTROL }],
+      },
+      {
+        source: "/checkout",
+        headers: [{ key: "Cache-Control", value: PRIVATE_CACHE_CONTROL }],
+      },
+      {
+        source: "/checkout/:path*",
+        headers: [{ key: "Cache-Control", value: PRIVATE_CACHE_CONTROL }],
+      },
+      {
+        source: "/order/:path*",
+        headers: [{ key: "Cache-Control", value: PRIVATE_CACHE_CONTROL }],
+      },
+      {
+        source: "/admin/:path*",
+        headers: [{ key: "Cache-Control", value: PRIVATE_CACHE_CONTROL }],
+      },
+      {
+        source: "/login",
+        headers: [{ key: "Cache-Control", value: PRIVATE_CACHE_CONTROL }],
       },
     ];
   },

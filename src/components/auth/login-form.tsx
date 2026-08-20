@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { safeNextPath } from "@/lib/login-next";
 
 const OTP_LENGTH = 6;
@@ -231,7 +232,17 @@ export function LoginForm({
       {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       <Button type="submit" disabled={pending || (!sent && !phoneReady) || (sent && code.length !== OTP_LENGTH)} className="h-12 w-full text-base">
-        {pending ? "Please wait…" : sent ? "Verify and continue" : "Send one-time code"}
+        {pending ? "Please wait…" : sent ? (
+          <>
+            <Icon name="circle-check" className="text-sm" />
+            Verify and continue
+          </>
+        ) : (
+          <>
+            <Icon name="paper-plane" className="text-sm" />
+            Send one-time code
+          </>
+        )}
       </Button>
 
       {sent ? (

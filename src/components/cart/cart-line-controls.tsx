@@ -9,6 +9,8 @@ import {
 } from "@/components/cart/cart-provider";
 import { cn } from "@/lib/cn";
 import { loginHref } from "@/lib/login-next";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Icon } from "@/components/ui/icon";
 
 export function CartLineControls({
   variantId,
@@ -27,6 +29,7 @@ export function CartLineControls({
   const { applySnapshot } = useCartUi();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   async function update(nextQty: number) {
     if (pending) {
@@ -58,6 +61,7 @@ export function CartLineControls({
       }
 
       applySnapshot(snapshotFromPayload(payload));
+      setConfirmRemove(false);
       router.refresh();
     } catch {
       setError("Could not update cart.");
@@ -68,7 +72,7 @@ export function CartLineControls({
 
   return (
     <div className="flex w-full flex-col gap-2">
-      <div className={cn("flex items-center gap-2", compact && "w-full")}>
+      <div className={cn("flex w-full items-center gap-2 sm:w-auto", compact && "w-full")}>
         <div
           className={cn(
             "inline-flex items-center rounded-full bg-brand/[0.05]",
@@ -82,7 +86,7 @@ export function CartLineControls({
             disabled={pending || (!compact && qty <= 1)}
             onClick={() => update(qty <= 1 ? 0 : qty - 1)}
           >
-            −
+            <Icon name="minus" className="text-xs" />
           </button>
           <span
             className="min-w-8 text-center tabular-nums"
@@ -97,21 +101,35 @@ export function CartLineControls({
             disabled={pending || qty >= stockQty}
             onClick={() => update(qty + 1)}
           >
-            +
+            <Icon name="plus" className="text-xs" />
           </button>
         </div>
         {compact ? null : (
           <button
             type="button"
-            className="inline-flex min-h-11 items-center px-3 text-sm text-muted hover:text-danger"
+            className="inline-flex min-h-11 items-center gap-2 px-3 text-sm text-muted hover:text-danger"
             disabled={pending}
-            onClick={() => update(0)}
+            onClick={() => setConfirmRemove(true)}
           >
+            <Icon name="trash-can" kit="regular" className="text-xs" />
             Remove
           </button>
         )}
       </div>
       {error ? <p className="text-sm text-danger">{error}</p> : null}
+      <ConfirmDialog
+        open={confirmRemove}
+        title="Remove from cart?"
+        description={`${productName} will be taken out of your cart. You can add it again from the shop.`}
+        confirmLabel="Remove"
+        pending={pending}
+        onCancel={() => {
+          if (!pending) {
+            setConfirmRemove(false);
+          }
+        }}
+        onConfirm={() => void update(0)}
+      />
     </div>
   );
 }

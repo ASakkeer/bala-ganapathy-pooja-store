@@ -1,7 +1,9 @@
 import "server-only";
 
 import { eq } from "drizzle-orm";
+import { CACHE_TAGS, CACHE_TTL } from "@/lib/cache";
 import { isIndianPincode } from "@/lib/pincode";
+import { cachedQuery } from "@/server/cache";
 import { getDb } from "@/server/db";
 import { serviceablePincodes } from "@/server/db/schema";
 import { isDatabaseConfigured } from "@/server/env";
@@ -13,7 +15,7 @@ export type ServiceablePincode = {
   estimatedDays: number | null;
 };
 
-export async function getServiceablePincode(pincode: string): Promise<ServiceablePincode | null> {
+async function fetchServiceablePincode(pincode: string): Promise<ServiceablePincode | null> {
   if (!isIndianPincode(pincode)) {
     return null;
   }
@@ -35,3 +37,12 @@ export async function getServiceablePincode(pincode: string): Promise<Serviceabl
     return mockGetPincode(pincode) ?? null;
   }
 }
+
+export const getServiceablePincode = cachedQuery(
+  (pincode: string) => ["pincode", pincode],
+  fetchServiceablePincode,
+  {
+    revalidate: CACHE_TTL.pincodes,
+    tags: [CACHE_TAGS.pincodes],
+  },
+);

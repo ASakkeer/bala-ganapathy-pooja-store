@@ -298,6 +298,53 @@ export async function createAddress(input: z.infer<typeof addressBodySchema>): P
   return { items, address: created, book };
 }
 
+export async function updateAddress(
+  addressId: string,
+  input: z.infer<typeof addressBodySchema>,
+): Promise<AddressMutation> {
+  const session = await requireSession();
+  const phone = normalizeIndianPhone(input.phone);
+  if (!phone) {
+    throw new AddressError("Enter a valid 10-digit Indian mobile number.", 400);
+  }
+
+  const pincode = await getServiceablePincode(input.pincode);
+  if (!pincode) {
+    throw new AddressError(
+      "We don’t deliver to this pincode yet. Try 110001, 400001, or 560001 in the demo.",
+      400,
+    );
+  }
+
+  const existing = await listAddresses();
+  const current = existing.find((item) => item.id === addressId);
+  if (!current) {
+    throw new AddressError("Address not found.", 404);
+  }
+
+  const makeDefault = input.isDefault === true;
+  const updated: Address = {
+    ...current,
+    name: input.name,
+    phone,
+    line1: input.line1,
+    line2: input.line2?.trim() || null,
+    city: input.city,
+    state: input.state,
+    pincode: input.pincode,
+    isDefault: makeDefault ? true : current.isDefault,
+  };
+  const items = ensureDefault(
+    makeDefault
+      ? existing.map((item) => (item.id === addressId ? updated : { ...item, isDefault: false }))
+      : existing.map((item) => (item.id === addressId ? updated : item)),
+  );
+  const book = bookFrom(session.userId, items);
+  await persistDb(session.userId, items);
+
+  return { items, address: items.find((item) => item.id === addressId), book };
+}
+
 export async function setDefaultAddress(addressId: string): Promise<AddressMutation> {
   const session = await requireSession();
   const existing = await listAddresses();

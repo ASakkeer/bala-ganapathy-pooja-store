@@ -8,6 +8,7 @@ import {
 import { FullBleed } from "@/components/ui/full-bleed";
 import { Container } from "@/components/ui/container";
 import { buttonClassName } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { copy } from "@/content/copy";
 
 type VisitStoreProps = {
@@ -75,41 +76,53 @@ export function VisitStore({
             {hasDetails ? (
               <>
                 {address?.trim() ? (
-                  <div>
-                    <dt className="text-[0.65rem] tracking-[0.16em] uppercase text-muted">Address</dt>
-                    <dd className="mt-1 text-base leading-relaxed text-text">{address}</dd>
+                  <div className="flex items-start gap-3">
+                    <Icon name="location-dot" className="mt-1 text-brand" />
+                    <div>
+                      <dt className="text-[0.65rem] tracking-[0.16em] uppercase text-muted">Address</dt>
+                      <dd className="mt-1 text-base leading-relaxed text-text">{address}</dd>
+                    </div>
                   </div>
                 ) : null}
                 {hours?.trim() ? (
-                  <div>
-                    <dt className="text-[0.65rem] tracking-[0.16em] uppercase text-muted">Hours</dt>
-                    <dd className="mt-1 text-base text-text">{hours}</dd>
+                  <div className="flex items-start gap-3">
+                    <Icon name="clock" kit="regular" className="mt-1 text-brand" />
+                    <div>
+                      <dt className="text-[0.65rem] tracking-[0.16em] uppercase text-muted">Hours</dt>
+                      <dd className="mt-1 text-base text-text">{hours}</dd>
+                    </div>
                   </div>
                 ) : null}
                 {numbers.length > 0 ? (
-                  <div>
-                    <dt className="text-[0.65rem] tracking-[0.16em] uppercase text-muted">Phone</dt>
-                    <dd className="mt-1 flex flex-col gap-1 text-base">
-                      {numbers.map((phone) => (
-                        <a
-                          key={phone}
-                          href={`tel:${phone}`}
-                          className="inline-flex min-h-11 items-center text-brand hover:underline"
-                        >
-                          {phone}
-                        </a>
-                      ))}
-                    </dd>
+                  <div className="flex items-start gap-3">
+                    <Icon name="phone" className="mt-1 text-brand" />
+                    <div>
+                      <dt className="text-[0.65rem] tracking-[0.16em] uppercase text-muted">Phone</dt>
+                      <dd className="mt-1 flex flex-col gap-1 text-base">
+                        {numbers.map((phone) => (
+                          <a
+                            key={phone}
+                            href={`tel:${phone}`}
+                            className="inline-flex min-h-11 items-center text-brand hover:underline"
+                          >
+                            {phone}
+                          </a>
+                        ))}
+                      </dd>
+                    </div>
                   </div>
                 ) : null}
                 {chatHref ? (
-                  <div>
-                    <dt className="text-[0.65rem] tracking-[0.16em] uppercase text-muted">WhatsApp</dt>
-                    <dd className="mt-1 text-base">
-                      <a href={chatHref} className="inline-flex min-h-11 items-center text-brand hover:underline">
-                        Message on WhatsApp
-                      </a>
-                    </dd>
+                  <div className="flex items-start gap-3">
+                    <Icon name="whatsapp" kit="brands" className="mt-1 text-brand" />
+                    <div>
+                      <dt className="text-[0.65rem] tracking-[0.16em] uppercase text-muted">WhatsApp</dt>
+                      <dd className="mt-1 text-base">
+                        <a href={chatHref} className="inline-flex min-h-11 items-center text-brand hover:underline">
+                          Message on WhatsApp
+                        </a>
+                      </dd>
+                    </div>
                   </div>
                 ) : null}
               </>
@@ -128,6 +141,7 @@ export function VisitStore({
                 rel="noreferrer"
                 target="_blank"
               >
+                <Icon name="diamond-turn-right" className="text-sm" />
                 {copy.openMap}
               </a>
             ) : null}
@@ -136,11 +150,13 @@ export function VisitStore({
                 href={`tel:${numbers[0]}`}
                 className={buttonClassName(directionsHref ? "secondary" : "primary")}
               >
+                <Icon name="phone" className="text-sm" />
                 {copy.callShop}
               </a>
             ) : null}
             {chatHref ? (
               <a href={chatHref} className={buttonClassName("secondary")}>
+                <Icon name="whatsapp" kit="brands" className="text-sm" />
                 WhatsApp
               </a>
             ) : null}

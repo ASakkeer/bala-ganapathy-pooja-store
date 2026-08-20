@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { paiseToRupeeInput, rupeesToPaise } from "@/lib/paise-parse";
@@ -83,6 +84,9 @@ export function ProductForm({
   const [variants, setVariants] = useState<VariantRow[]>(toVariantRows(product));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [removeImageIndex, setRemoveImageIndex] = useState<number | null>(null);
+  const [removeVariantIndex, setRemoveVariantIndex] = useState<number | null>(null);
 
   function onName(value: string) {
     setName(value);
@@ -342,7 +346,7 @@ export function ProductForm({
             <button
               type="button"
               className="self-end text-sm text-danger"
-              onClick={() => setImages((current) => current.filter((_, rowIndex) => rowIndex !== index))}
+              onClick={() => setRemoveImageIndex(index)}
             >
               Remove
             </button>
@@ -471,7 +475,7 @@ export function ProductForm({
               <button
                 type="button"
                 className="text-left text-sm text-danger"
-                onClick={() => setVariants((current) => current.filter((_, rowIndex) => rowIndex !== index))}
+                onClick={() => setRemoveVariantIndex(index)}
               >
                 Remove variant
               </button>
@@ -507,11 +511,54 @@ export function ProductForm({
           {pending ? "Saving…" : "Save product"}
         </Button>
         {product ? (
-          <Button type="button" variant="secondary" disabled={pending} onClick={() => void archive()}>
+          <Button type="button" variant="secondary" disabled={pending} onClick={() => setArchiveOpen(true)}>
             Archive
           </Button>
         ) : null}
       </div>
+      <ConfirmDialog
+        open={archiveOpen}
+        title="Archive this product?"
+        description={`${product?.name ?? "This product"} will leave the shop until you restore it. Orders already placed are not changed.`}
+        confirmLabel="Archive"
+        pending={pending}
+        onCancel={() => {
+          if (!pending) {
+            setArchiveOpen(false);
+          }
+        }}
+        onConfirm={() => void archive()}
+      />
+      <ConfirmDialog
+        open={removeImageIndex !== null}
+        title="Remove this image?"
+        description="The image will be dropped from this product when you save."
+        confirmLabel="Remove"
+        onCancel={() => setRemoveImageIndex(null)}
+        onConfirm={() => {
+          if (removeImageIndex !== null) {
+            setImages((current) => current.filter((_, rowIndex) => rowIndex !== removeImageIndex));
+            setRemoveImageIndex(null);
+          }
+        }}
+      />
+      <ConfirmDialog
+        open={removeVariantIndex !== null}
+        title="Remove this variant?"
+        description={
+          removeVariantIndex !== null
+            ? `${variants[removeVariantIndex]?.name || "This pack"} will be deleted from the form. Save the product to apply it.`
+            : "This pack will be deleted from the form."
+        }
+        confirmLabel="Remove variant"
+        onCancel={() => setRemoveVariantIndex(null)}
+        onConfirm={() => {
+          if (removeVariantIndex !== null) {
+            setVariants((current) => current.filter((_, rowIndex) => rowIndex !== removeVariantIndex));
+            setRemoveVariantIndex(null);
+          }
+        }}
+      />
     </form>
   );
 }

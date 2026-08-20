@@ -1,39 +1,58 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginHref } from "@/lib/login-next";
 
+export type AddressFormValues = {
+  name: string;
+  phone: string;
+  line1: string;
+  line2: string;
+  city: string;
+  state: string;
+  pincode: string;
+};
+
 export function AddressForm({
   initialPhone,
   nextPath,
+  addressId,
+  initialValues,
+  submitLabel = "Save address",
+  cancelHref,
 }: {
   initialPhone?: string;
   nextPath?: string;
+  addressId?: string;
+  initialValues?: Partial<AddressFormValues>;
+  submitLabel?: string;
+  cancelHref?: string;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [pincodeNote, setPincodeNote] = useState("");
   const [pincodeOk, setPincodeOk] = useState<boolean | null>(null);
-  const [values, setValues] = useState({
-    name: "",
-    phone: initialPhone ?? "",
-    line1: "",
-    line2: "",
-    city: "",
-    state: "",
-    pincode: "",
+  const [values, setValues] = useState<AddressFormValues>({
+    name: initialValues?.name ?? "",
+    phone: initialValues?.phone ?? initialPhone ?? "",
+    line1: initialValues?.line1 ?? "",
+    line2: initialValues?.line2 ?? "",
+    city: initialValues?.city ?? "",
+    state: initialValues?.state ?? "",
+    pincode: initialValues?.pincode ?? "",
   });
+  const initialPincode = initialValues?.pincode ?? "";
 
-  function setField(name: keyof typeof values, value: string) {
+  function setField(name: keyof AddressFormValues, value: string) {
     setValues((current) => ({ ...current, [name]: value }));
   }
 
-  async function checkPincode(pincode: string) {
+  const checkPincode = useCallback(async (pincode: string) => {
     if (!/^\d{6}$/.test(pincode)) {
       setPincodeOk(null);
       setPincodeNote("");
@@ -44,15 +63,24 @@ export function AddressForm({
     const payload = (await response.json()) as { serviceable?: boolean; message?: string };
     setPincodeOk(Boolean(payload.serviceable));
     setPincodeNote(payload.message ?? "");
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!/^\d{6}$/.test(initialPincode)) {
+      return;
+    }
+
+    void checkPincode(initialPincode);
+  }, [checkPincode, initialPincode]);
 
   async function submit() {
     setPending(true);
     setError("");
 
     try {
-      const response = await fetch("/api/addresses", {
-        method: "POST",
+      const editing = Boolean(addressId);
+      const response = await fetch(editing ? `/api/addresses/${addressId}` : "/api/addresses", {
+        method: editing ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
         cache: "no-store",
@@ -62,9 +90,10 @@ export function AddressForm({
         }),
       });
       const payload = (await response.json()) as { error?: string };
+      const returnPath = nextPath ?? "/account/addresses";
 
       if (response.status === 401) {
-        router.push(loginHref(nextPath ?? "/account/addresses"));
+        router.push(loginHref(returnPath));
         return;
       }
 
@@ -73,24 +102,12 @@ export function AddressForm({
         return;
       }
 
-      setValues({
-        name: "",
-        phone: initialPhone ?? "",
-        line1: "",
-        line2: "",
-        city: "",
-        state: "",
-        pincode: "",
-      });
-      setPincodeOk(null);
-      setPincodeNote("");
-
       if (nextPath) {
         window.location.assign(nextPath);
         return;
       }
 
-      router.refresh();
+      window.location.assign("/account/addresses?saved=1");
     } catch {
       setError("Could not save the address.");
     } finally {
@@ -213,9 +230,22 @@ export function AddressForm({
           {error}
         </p>
       ) : null}
-      <Button type="submit" disabled={!canSubmit}>
-        {pending ? "Saving…" : "Save address"}
-      </Button>
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <Button type="submit" disabled={!canSubmit} className="w-full sm:min-w-40 sm:w-auto">
+          {pending ? "Saving…" : submitLabel}
+        </Button>
+        {cancelHref ? (
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={pending}
+            className="w-full sm:w-auto"
+            onClick={() => router.push(cancelHref)}
+          >
+            Cancel
+          </Button>
+        ) : null}
+      </div>
     </form>
   );
 }

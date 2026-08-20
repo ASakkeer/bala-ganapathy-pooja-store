@@ -8,7 +8,6 @@ import { pageMetadata } from "@/lib/site";
 import { getCategoryBySlug, listCatalog } from "@/server/queries/products";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 120;
 
 type CategoryPageProps = {
   params: Promise<{ slug: string }>;

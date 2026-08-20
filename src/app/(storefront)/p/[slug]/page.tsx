@@ -11,7 +11,6 @@ import { absoluteUrl, pageMetadata } from "@/lib/site";
 import { getProductBySlug } from "@/server/queries/products";
 
 export const dynamic = "force-dynamic";
-export const revalidate = 120;
 
 type ProductPageProps = {
   params: Promise<{ slug: string }>;

@@ -5,6 +5,7 @@ import { CartCountBadge } from "@/components/cart/cart-count-badge";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { SearchField, SearchForm } from "@/components/layout/search-field";
 import { Container } from "@/components/ui/container";
+import { Icon } from "@/components/ui/icon";
 import { firstPhone, whatsappHref } from "@/lib/contact";
 import { loginHref } from "@/lib/login-next";
 import {
@@ -36,16 +37,22 @@ export function Header({
     <header className="relative border-b border-border/80 bg-bg/90 backdrop-blur-xl">
       <div className="hidden border-b border-border/60 md:block">
         <Container className="flex h-9 items-center justify-between gap-4 text-[0.7rem] tracking-[0.12em] uppercase text-muted">
-          <p>R.S. Puram, Coimbatore</p>
+          <p className="inline-flex items-center gap-2">
+            <Icon name="location-dot" className="text-[0.65rem] text-brand" />
+            R.S. Puram, Coimbatore
+          </p>
           <nav aria-label="Help" className="flex items-center gap-5">
-            <Link href="/track" className="hover:text-brand">
+            <Link href="/track" className="inline-flex items-center gap-2 hover:text-brand">
+              <Icon name="truck" className="text-[0.65rem]" />
               Track order
             </Link>
-            <Link href="/contact" className="hover:text-brand">
+            <Link href="/contact" className="inline-flex items-center gap-2 hover:text-brand">
+              <Icon name="headset" className="text-[0.65rem]" />
               Contact
             </Link>
             {phone ? (
-              <a href={`tel:${phone}`} className="hover:text-brand">
+              <a href={`tel:${phone}`} className="inline-flex items-center gap-2 hover:text-brand">
+                <Icon name="phone" className="text-[0.65rem]" />
                 {phone}
               </a>
             ) : null}
@@ -67,24 +74,24 @@ export function Header({
           </Suspense>
           {chatHref ? (
             <a href={chatHref} className={`${iconLinkClassName} hidden lg:inline-flex`}>
-              <WhatsAppIcon />
+              <Icon name="whatsapp" kit="brands" className="text-[1.15rem]" />
               <span className="sr-only">WhatsApp</span>
             </a>
           ) : null}
-          <Link href={signedIn ? "/account" : loginHref("/account")} className={iconLinkClassName}>
-            <AccountIcon />
-            <span className="sr-only">{signedIn ? "Account" : "Sign in"}</span>
+          <Link
+            href={signedIn ? "/account" : loginHref("/account")}
+            aria-label={signedIn ? "Account" : "Sign in"}
+            className={iconLinkClassName}
+          >
+            <Icon name="user" kit="regular" className="text-[1.15rem]" />
           </Link>
           {isAdmin ? (
-            <Link href="/admin" className={`${iconLinkClassName} hidden sm:inline-flex`}>
-              <span className="sr-only">Admin</span>
-              <span aria-hidden className="text-[0.65rem] font-medium tracking-[0.12em] uppercase">
-                Admin
-              </span>
+            <Link href="/admin" aria-label="Admin" className={`${iconLinkClassName} hidden sm:inline-flex`}>
+              <Icon name="gear" className="text-[1.1rem]" />
             </Link>
           ) : null}
           <Link href={signedIn ? "/cart" : loginHref("/cart")} className={`${iconLinkClassName} relative`}>
-            <CartIcon />
+            <Icon name="bag-shopping" className="text-[1.15rem]" />
             <CartCountBadge />
           </Link>
         </div>
@@ -110,52 +117,5 @@ export function Header({
         </nav>
       </Container>
     </header>
-  );
-}
-
-function AccountIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <circle cx="12" cy="8" r="3.25" stroke="currentColor" strokeWidth="1.7" />
-      <path
-        d="M5.5 19.2c1.4-2.8 3.8-4.2 6.5-4.2s5.1 1.4 6.5 4.2"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function CartIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M7 7.5h12.5l-1.1 8.2a1.8 1.8 0 0 1-1.8 1.6H9.2a1.8 1.8 0 0 1-1.8-1.6L6.2 5.2H4"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function WhatsAppIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M12 4.5a7.5 7.5 0 0 0-6.4 11.4L4.5 19.5l3.7-1a7.5 7.5 0 1 0 3.8-14Z"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M9.6 9.6c.3 1.6 1.6 3 3.2 3.3"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-      />
-    </svg>
   );
 }

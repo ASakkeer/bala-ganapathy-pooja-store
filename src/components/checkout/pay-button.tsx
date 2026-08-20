@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { STORE_LOGO_SRC, STORE_NAME } from "@/lib/constants";
 
 type CheckoutPayload = {
@@ -21,8 +22,19 @@ type RazorpaySuccess = {
   razorpay_signature: string;
 };
 
+type RazorpayFailure = {
+  error?: {
+    description?: string;
+    metadata?: {
+      order_id?: string;
+      payment_id?: string;
+    };
+  };
+};
+
 type RazorpayCheckout = {
   open: () => void;
+  on: (event: string, handler: (response: RazorpayFailure) => void) => void;
 };
 
 declare global {
@@ -55,9 +67,25 @@ function loadCheckoutScript() {
   return checkoutScript;
 }
 
+function currentOrderPath(publicNumber: string) {
+  const path = window.location.pathname;
+  if (path.startsWith("/order/confirmation/") || path.startsWith("/account/orders/")) {
+    return path;
+  }
+
+  return `/order/confirmation/${encodeURIComponent(publicNumber)}`;
+}
+
+function returnHref(publicNumber: string, flag: "paid" | "pay_failed") {
+  const url = new URL(currentOrderPath(publicNumber), window.location.origin);
+  url.searchParams.set(flag, "1");
+  return url.pathname + url.search;
+}
+
 function completeHref(publicNumber: string, payment?: RazorpaySuccess) {
   const url = new URL("/api/payments/razorpay/complete", window.location.origin);
   url.searchParams.set("publicNumber", publicNumber);
+  url.searchParams.set("next", `${currentOrderPath(publicNumber)}?paid=1`);
   if (payment) {
     url.searchParams.set("razorpay_order_id", payment.razorpay_order_id);
     url.searchParams.set("razorpay_payment_id", payment.razorpay_payment_id);
@@ -76,6 +104,68 @@ export function PayButton({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const completedRef = useRef(false);
+  const pollTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pollTimer.current != null) {
+        window.clearInterval(pollTimer.current);
+      }
+    };
+  }, []);
+
+  function stopPolling() {
+    if (pollTimer.current != null) {
+      window.clearInterval(pollTimer.current);
+      pollTimer.current = null;
+    }
+  }
+
+  function goTo(flag: "paid" | "pay_failed") {
+    stopPolling();
+    window.location.replace(returnHref(publicNumber, flag));
+  }
+
+  async function refreshStatus() {
+    const response = await fetch("/api/payments/razorpay/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      cache: "no-store",
+      body: JSON.stringify({ publicNumber }),
+    });
+    if (!response.ok) {
+      return null;
+    }
+
+    return (await response.json()) as {
+      payable?: boolean;
+      status?: string;
+      paymentStatus?: string;
+    };
+  }
+
+  function startPolling() {
+    stopPolling();
+    pollTimer.current = window.setInterval(() => {
+      void refreshStatus().then((data) => {
+        if (!data || completedRef.current) {
+          return;
+        }
+
+        if (data.paymentStatus === "captured" || data.payable === false) {
+          completedRef.current = true;
+          goTo("paid");
+          return;
+        }
+
+        if (data.status === "payment_failed" || data.paymentStatus === "failed") {
+          completedRef.current = true;
+          goTo("pay_failed");
+        }
+      });
+    }, 1500);
+  }
 
   async function startPayment() {
     if (!configured || pending) {
@@ -122,24 +212,67 @@ export function PayButton({
           contact: createPayload.phone,
         },
         theme: { color: "#7a1f2b" },
-        callback_url: `${window.location.origin}/api/payments/razorpay/complete?publicNumber=${encodeURIComponent(publicNumber)}`,
         handler: (response: RazorpaySuccess) => {
           completedRef.current = true;
-          window.location.replace(completeHref(publicNumber, response));
+          stopPolling();
+          void fetch("/api/payments/razorpay/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            cache: "no-store",
+            body: JSON.stringify({
+              publicNumber,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            }),
+          })
+            .then((verifyResponse) => {
+              if (verifyResponse.ok) {
+                goTo("paid");
+                return;
+              }
+              window.location.replace(completeHref(publicNumber, response));
+            })
+            .catch(() => {
+              window.location.replace(completeHref(publicNumber, response));
+            });
         },
         modal: {
           ondismiss: () => {
             if (completedRef.current) {
               return;
             }
+            stopPolling();
             setPending(false);
             setError("Payment was cancelled. You can try again.");
           },
         },
       });
 
+      checkout.on("payment.failed", (response) => {
+        completedRef.current = true;
+        stopPolling();
+        void fetch("/api/payments/razorpay/fail", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          cache: "no-store",
+          body: JSON.stringify({
+            publicNumber,
+            razorpayOrderId: response.error?.metadata?.order_id,
+            razorpayPaymentId: response.error?.metadata?.payment_id,
+            reason: response.error?.description,
+          }),
+        }).finally(() => {
+          goTo("pay_failed");
+        });
+      });
+
+      startPolling();
       checkout.open();
     } catch {
+      stopPolling();
       setError("Could not start payment.");
       setPending(false);
     }
@@ -158,7 +291,12 @@ export function PayButton({
   return (
     <div className="flex flex-col gap-2">
       <Button type="button" disabled={pending} onClick={() => void startPayment()}>
-        {pending ? "Opening payment…" : "Pay now"}
+        {pending ? "Opening payment…" : (
+          <>
+            <Icon name="lock" className="text-sm" />
+            Pay now
+          </>
+        )}
       </Button>
       {error ? <p className="text-sm text-danger">{error}</p> : null}
     </div>

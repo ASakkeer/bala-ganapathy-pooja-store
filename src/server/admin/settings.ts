@@ -3,7 +3,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { AdminError } from "@/server/admin/catalog";
-import { revalidatePath } from "next/cache";
+import { revalidatePincodes, revalidateStore } from "@/server/admin/revalidate";
 import { getDb } from "@/server/db";
 import { serviceablePincodes, storeSettings } from "@/server/db/schema";
 import { isDatabaseConfigured } from "@/server/env";
@@ -84,9 +84,7 @@ export async function saveAdminSettings(body: z.infer<typeof settingsBodySchema>
     }
   }
 
-  revalidatePath("/");
-  revalidatePath("/contact");
-  revalidatePath("/policies/shipping");
+  revalidateStore();
   return next;
 }
 
@@ -127,6 +125,8 @@ export async function addAdminPincode(body: z.infer<typeof pincodeBodySchema>) {
       // Mock pincode list still updated.
     }
   }
+
+  revalidatePincodes();
 }
 
 export async function removeAdminPincode(pincode: string) {
@@ -144,4 +144,6 @@ export async function removeAdminPincode(pincode: string) {
       // Mock pincode removed.
     }
   }
+
+  revalidatePincodes();
 }

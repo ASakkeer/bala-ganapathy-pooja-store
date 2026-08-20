@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { nextOrderStatuses } from "@/lib/order-transitions";
 import { orderStatusLabel } from "@/lib/order-status";
 import type { OrderStatus } from "@/types";
@@ -19,6 +20,7 @@ export function OrderStatusForm({
   const [next, setNext] = useState(options[0] ?? status);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   if (options.length === 0) {
     return <p className="text-sm text-muted">This order has no further status changes.</p>;
@@ -26,6 +28,14 @@ export function OrderStatusForm({
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (next === "cancelled") {
+      setCancelOpen(true);
+      return;
+    }
+    await saveStatus(next);
+  }
+
+  async function saveStatus(status: OrderStatus) {
     setPending(true);
     setError("");
     try {
@@ -33,12 +43,13 @@ export function OrderStatusForm({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify({ status: next }),
+        body: JSON.stringify({ status }),
       });
       const payload = (await response.json()) as { error?: string };
       if (!response.ok) {
         throw new Error(payload.error ?? "Could not update status.");
       }
+      setCancelOpen(false);
       router.refresh();
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Could not update status.");
@@ -68,6 +79,19 @@ export function OrderStatusForm({
       <Button type="submit" disabled={pending} className="w-fit">
         {pending ? "Saving…" : "Update status"}
       </Button>
+      <ConfirmDialog
+        open={cancelOpen}
+        title="Cancel this order?"
+        description={`${publicNumber} will be marked cancelled. This cannot be undone from here.`}
+        confirmLabel="Cancel order"
+        pending={pending}
+        onCancel={() => {
+          if (!pending) {
+            setCancelOpen(false);
+          }
+        }}
+        onConfirm={() => void saveStatus("cancelled")}
+      />
     </form>
   );
 }

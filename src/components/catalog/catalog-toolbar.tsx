@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import {
   CATALOG_SORT_LABELS,
   CATALOG_SORTS,
@@ -75,6 +76,7 @@ export function CatalogToolbar({
         className="md:hidden"
         onClick={() => setFiltersOpen(true)}
       >
+        <Icon name="sliders" className="text-sm" />
         Filter & sort
       </Button>
       {filtersOpen ? (

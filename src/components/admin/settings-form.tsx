@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { paiseToRupeeInput, rupeesToPaise } from "@/lib/paise-parse";
@@ -48,6 +49,7 @@ export function SettingsForm({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [removePin, setRemovePin] = useState("");
 
   async function saveSettings(event: React.FormEvent) {
     event.preventDefault();
@@ -130,6 +132,7 @@ export function SettingsForm({
       if (!response.ok) {
         throw new Error(payload.error ?? "Could not remove pincode.");
       }
+      setRemovePin("");
       router.refresh();
     } catch (removeError) {
       setError(removeError instanceof Error ? removeError.message : "Could not remove pincode.");
@@ -208,7 +211,7 @@ export function SettingsForm({
                 type="button"
                 className="text-danger"
                 disabled={pending}
-                onClick={() => void removePincode(row.pincode)}
+                onClick={() => setRemovePin(row.pincode)}
               >
                 Remove
               </button>
@@ -235,6 +238,27 @@ export function SettingsForm({
           </Button>
         </form>
       </section>
+      <ConfirmDialog
+        open={Boolean(removePin)}
+        title="Remove this pincode?"
+        description={
+          removePin
+            ? `${removePin} will no longer be treated as a delivery area on checkout.`
+            : "This pincode will no longer be treated as a delivery area."
+        }
+        confirmLabel="Remove"
+        pending={pending}
+        onCancel={() => {
+          if (!pending) {
+            setRemovePin("");
+          }
+        }}
+        onConfirm={() => {
+          if (removePin) {
+            void removePincode(removePin);
+          }
+        }}
+      />
     </div>
   );
 }

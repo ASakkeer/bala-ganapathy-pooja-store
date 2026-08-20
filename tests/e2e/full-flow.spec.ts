@@ -66,7 +66,7 @@ test("home merchandising works on mobile and desktop", async ({ page }) => {
     expect(response?.ok(), `Home ${viewport.width}px returned ${response?.status()}`).toBeTruthy();
     await expect(page.locator("body")).not.toContainText("Application error");
     await expect(page.getByRole("heading", { level: 1, name: /Traditional pooja/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Shop pooja essentials" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Shop Now" })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Shop by category" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Popular pooja items" })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Visit the store/i })).toBeVisible();
@@ -147,6 +147,7 @@ test("home to checkout, track, and logout", async ({ page, context }) => {
 
   await page.goto("/account");
   await page.getByRole("button", { name: "Sign out" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
 
@@ -295,6 +296,7 @@ test("listing add to cart stays in sync with details and cart", async ({ page, c
   await page.goto("/cart");
   await expect(page.getByLabel(/Quantity of Camphor/)).toHaveText("1");
   await page.getByRole("button", { name: "Remove" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Remove" }).click();
   await expect(page.getByRole("heading", { name: /Your cart is empty/i })).toBeVisible();
   await expect(page.getByRole("link", { name: /Cart, 0 items/ })).toBeVisible();
 

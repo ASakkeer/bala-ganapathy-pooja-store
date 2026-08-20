@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCartUi, snapshotFromPayload, type CartMutationPayload } from "@/components/cart/cart-provider";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { loginHref } from "@/lib/login-next";
 import { savePendingCartAction } from "@/lib/pending-cart";
 
@@ -84,7 +85,12 @@ export function AddToCartButton({
   return (
     <div className="flex w-full flex-col gap-2">
       <Button type="button" variant={variant} disabled={disabled || pending} onClick={onAdd} className={className ?? "w-full"}>
-        {pending ? "Adding…" : label}
+        {pending ? "Adding…" : (
+          <>
+            <Icon name="bag-shopping" className="text-sm" />
+            {label}
+          </>
+        )}
       </Button>
       {error ? <p className="text-sm text-danger">{error}</p> : null}
     </div>

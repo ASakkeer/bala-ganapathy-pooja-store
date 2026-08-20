@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { buttonClassName } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 
 export function CatalogEmpty({
   title,
@@ -10,7 +11,13 @@ export function CatalogEmpty({
 }) {
   return (
     <div className="py-20 text-center">
-      <h2 className="font-serif text-3xl font-medium tracking-tight">{title}</h2>
+      <span
+        aria-hidden
+        className="inline-flex size-14 items-center justify-center rounded-full bg-brand/10 text-brand"
+      >
+        <Icon name="box-open" className="text-xl" />
+      </span>
+      <h2 className="mt-5 font-serif text-3xl font-medium tracking-tight">{title}</h2>
       <p className="mx-auto mt-3 max-w-md text-muted">{description}</p>
       <div className="mt-8 flex justify-center gap-3">
         <Link href="/c/pooja-essentials" className={buttonClassName("primary")}>

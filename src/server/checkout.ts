@@ -16,6 +16,7 @@ import {
   variants,
 } from "@/server/db/schema";
 import { isDatabaseConfigured } from "@/server/env";
+import { orderStatusRank } from "@/lib/order-status";
 import type { OrderStatus, PaymentStatus } from "@/types";
 import { mockReserveStock } from "@/server/queries/mock-catalog";
 import { getServiceablePincode } from "@/server/queries/pincodes";
@@ -189,28 +190,49 @@ export function getMemoryOrderByRazorpayOrderId(razorpayOrderId: string) {
   return null;
 }
 
-export async function getOrderByPublicNumber(number: string) {
-  let decoded = number.trim();
-  try {
-    decoded = decodeURIComponent(number).trim();
-  } catch {
-    decoded = number.trim();
-  }
-  const fromMemory = memoryOrders.get(decoded) ?? memoryOrders.get(number);
-  if (fromMemory) {
-    return fromMemory;
+function isFresherOrder(candidate: PlacedOrder, current: PlacedOrder) {
+  const candidateRank = orderStatusRank(candidate.status);
+  const currentRank = orderStatusRank(current.status);
+  if (candidateRank !== currentRank) {
+    return candidateRank > currentRank;
   }
 
-  const book = await readOrderCookieBook();
-  const fromCookie = book?.orders.find(
-    (item) => item.publicNumber === decoded || item.publicNumber === number,
+  if (candidate.paymentStatus === "captured" && current.paymentStatus !== "captured") {
+    return true;
+  }
+
+  if (candidate.razorpayOrderId && !current.razorpayOrderId) {
+    return true;
+  }
+
+  return false;
+}
+
+function mergeOrderSnapshots(
+  primary: PlacedOrder | null | undefined,
+  secondary: PlacedOrder | null | undefined,
+) {
+  if (!primary) {
+    return secondary ?? null;
+  }
+
+  if (!secondary) {
+    return primary;
+  }
+
+  return isFresherOrder(secondary, primary) ? secondary : primary;
+}
+
+function snapshotLooksUnpaid(order: PlacedOrder) {
+  return (
+    (order.status === "pending_payment" ||
+      order.status === "placed" ||
+      order.status === "payment_failed") &&
+    (order.paymentStatus === "pending" || order.paymentStatus === "failed")
   );
-  if (fromCookie) {
-    const order = fromCookie as PlacedOrder;
-    saveMemoryOrder(order);
-    return order;
-  }
+}
 
+async function loadDbOrderByPublicNumber(publicNumber: string) {
   if (!isDatabaseConfigured()) {
     return null;
   }
@@ -218,7 +240,7 @@ export async function getOrderByPublicNumber(number: string) {
   try {
     const db = getDb();
     const order = await db.query.orders.findFirst({
-      where: eq(orders.publicNumber, number),
+      where: eq(orders.publicNumber, publicNumber),
       with: { items: true },
     });
 
@@ -231,6 +253,36 @@ export async function getOrderByPublicNumber(number: string) {
   } catch {
     return null;
   }
+}
+
+export async function getOrderByPublicNumber(number: string) {
+  let decoded = number.trim();
+  try {
+    decoded = decodeURIComponent(number).trim();
+  } catch {
+    decoded = number.trim();
+  }
+  const fromMemory = memoryOrders.get(decoded) ?? memoryOrders.get(number) ?? null;
+  const book = await readOrderCookieBook();
+  const fromCookie =
+    (book?.orders.find(
+      (item) => item.publicNumber === decoded || item.publicNumber === number,
+    ) as PlacedOrder | undefined) ?? null;
+
+  let order = mergeOrderSnapshots(fromMemory, fromCookie);
+
+  if (!order || snapshotLooksUnpaid(order)) {
+    const fromDb =
+      (await loadDbOrderByPublicNumber(decoded)) ??
+      (decoded === number ? null : await loadDbOrderByPublicNumber(number));
+    order = mergeOrderSnapshots(order, fromDb);
+  }
+
+  if (order) {
+    saveMemoryOrder(order);
+  }
+
+  return order;
 }
 
 export async function getOrderByRazorpayOrderId(razorpayOrderId: string) {

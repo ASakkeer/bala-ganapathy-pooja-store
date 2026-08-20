@@ -24,3 +24,20 @@ export const POLICY_LINKS = [
   { name: "Privacy policy", href: "/policies/privacy" },
   { name: "Terms & conditions", href: "/policies/terms" },
 ] as const;
+
+export const FOOTER_SUPPORT_LINKS = [
+  { name: "Track Order", href: "/track" },
+  { name: "Contact Us", href: "/contact" },
+] as const;
+
+export const FOOTER_COMPANY_LINKS = [
+  { name: "About Us", href: "/about" },
+  { name: "Store Location", href: "/contact" },
+] as const;
+
+export const FOOTER_LEGAL_LINKS = [
+  { name: "Privacy Policy", href: "/policies/privacy" },
+  { name: "Terms & Conditions", href: "/policies/terms" },
+  { name: "Shipping Policy", href: "/policies/shipping" },
+  { name: "Returns & Refunds", href: "/policies/returns" },
+] as const;

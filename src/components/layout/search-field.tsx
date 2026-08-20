@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
 
 export function SearchField({
@@ -50,17 +51,8 @@ export function SearchForm({
         className="absolute right-0.5 top-0.5 inline-flex size-10 items-center justify-center rounded-full text-brand hover:bg-brand/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:size-11"
       >
         <span className="sr-only">Search</span>
-        <SearchIcon />
+        <Icon name="magnifying-glass" className="text-sm" />
       </button>
     </form>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M16 16.5L20 20.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
   );
 }

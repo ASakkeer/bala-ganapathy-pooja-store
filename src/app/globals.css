@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@fortawesome/fontawesome-free/css/all.min.css";
 
 @theme {
   --color-brand: #7a1f2b;
@@ -58,4 +59,16 @@ input[type="search"]::-webkit-search-cancel-button {
 
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+.fa-solid,
+.fa-regular,
+.fa-brands {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-style: normal;
+  line-height: 1;
+  width: 1em;
+  height: 1em;
 }

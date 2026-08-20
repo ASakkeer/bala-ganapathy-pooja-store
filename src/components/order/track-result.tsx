@@ -74,32 +74,34 @@ export function TrackResult({
   const placedWhen = formatOrderWhen(order.createdAt);
 
   return (
-    <div className="flex flex-col gap-8 lg:gap-10">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-xs tracking-[0.16em] uppercase text-muted">Order</p>
-          <h2
-            className="mt-1 font-serif text-2xl font-medium tracking-tight break-all md:text-3xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-            tabIndex={-1}
-          >
-            {order.publicNumber}
-          </h2>
-          {placedOn ? <p className="mt-1 text-sm text-muted">Placed on {placedOn}</p> : null}
-        </div>
-        <div className="sm:text-right">
-          <p className="font-serif text-2xl tabular-nums md:text-3xl">
-            {formatPaise(order.grandTotalPaise)}
-          </p>
-          <Badge variant={statusBadgeVariant(order.status)} className="mt-2">
-            {orderStatusLabel(order.status)}
-          </Badge>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 py-8 md:gap-8 md:py-12">
+      <header className="overflow-hidden rounded-[1.25rem] bg-surface px-5 py-6 ring-1 ring-border/80 sm:px-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs tracking-[0.16em] uppercase text-muted">Order</p>
+            <h2
+              className="mt-1 font-serif text-2xl font-medium tracking-tight break-all md:text-3xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              tabIndex={-1}
+            >
+              {order.publicNumber}
+            </h2>
+            {placedOn ? <p className="mt-1 text-sm text-muted">Placed on {placedOn}</p> : null}
+          </div>
+          <div className="sm:text-right">
+            <p className="font-serif text-2xl tabular-nums md:text-3xl">
+              {formatPaise(order.grandTotalPaise)}
+            </p>
+            <Badge variant={statusBadgeVariant(order.status)} className="mt-2">
+              {orderStatusLabel(order.status)}
+            </Badge>
+          </div>
         </div>
       </header>
 
-      <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:gap-14">
-        <div className="flex min-w-0 flex-col gap-8">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:gap-8">
+        <div className="flex min-w-0 flex-col gap-6">
           <section
-            className="border-y border-border/80 py-5"
+            className="overflow-hidden rounded-[1.25rem] bg-surface px-5 py-6 ring-1 ring-border/80 sm:px-8"
             aria-labelledby="track-status-heading"
           >
             <p className="text-xs tracking-[0.16em] uppercase text-muted">Current status</p>
@@ -110,9 +112,10 @@ export function TrackResult({
               {orderStatusExplanation(order.status)}
             </p>
             {placedWhen ? <p className="mt-3 text-sm text-muted">{placedWhen}</p> : null}
+            <div className="mt-6 border-t border-border/80 pt-6">
+              <OrderProgress status={order.status} />
+            </div>
           </section>
-
-          <OrderProgress status={order.status} />
 
           <div className="flex flex-wrap gap-2">
             {order.payable ? (
@@ -145,7 +148,7 @@ export function TrackResult({
           </div>
         </div>
 
-        <aside className="flex min-w-0 flex-col gap-8 border-t border-border/80 pt-8 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-12">
+        <aside className="flex min-w-0 flex-col gap-8 overflow-hidden rounded-[1.25rem] bg-surface px-5 py-6 ring-1 ring-border/80 sm:px-8">
           <section>
             <h3 className="text-xs tracking-[0.16em] uppercase text-muted">Order summary</h3>
             <p className="mt-2 text-sm text-muted">
@@ -198,7 +201,7 @@ export function TrackResult({
             </dl>
           </section>
 
-          <section>
+          <section className="border-t border-border/80 pt-6">
             <h3 className="text-xs tracking-[0.16em] uppercase text-muted">Delivery</h3>
             <address className="mt-3 text-sm leading-relaxed text-text not-italic">
               <span className="font-medium">{order.address.name}</span>

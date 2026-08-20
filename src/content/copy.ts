@@ -5,7 +5,9 @@ export const copy = {
   heroBody:
     "Samagri for daily pooja, materials for Ganapathy and Navagraha Homam, kumbabishekam requirements, and traditional naattu marundhu — from the counter in R.S. Puram.",
   shopPooja: "Shop pooja essentials",
+  shopNow: "Shop Now",
   shopHomam: "Homam collections",
+  viewAllProducts: "View all products",
   browseCatalog: "Browse the catalog",
   startHere: "Start here",
   shopByNeed: "Shop by what you need",

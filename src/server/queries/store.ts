@@ -1,12 +1,13 @@
 import "server-only";
 
-import { cache } from "react";
+import { CACHE_TAGS, CACHE_TTL } from "@/lib/cache";
+import { cachedQuery } from "@/server/cache";
 import { getDb } from "@/server/db";
 import { storeSettings } from "@/server/db/schema";
 import { isDatabaseConfigured } from "@/server/env";
 import { mockGetSettings } from "@/server/queries/mock-catalog";
 
-export const getStoreSettings = cache(async () => {
+async function fetchStoreSettings() {
   if (!isDatabaseConfigured()) {
     return mockGetSettings();
   }
@@ -18,4 +19,13 @@ export const getStoreSettings = cache(async () => {
   } catch {
     return mockGetSettings();
   }
-});
+}
+
+export const getStoreSettings = cachedQuery(
+  () => ["store:settings"],
+  fetchStoreSettings,
+  {
+    revalidate: CACHE_TTL.store,
+    tags: [CACHE_TAGS.store],
+  },
+);

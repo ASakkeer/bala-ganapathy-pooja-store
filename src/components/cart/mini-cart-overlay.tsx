@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCartUi } from "@/components/cart/cart-provider";
 import { buttonClassName } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
 
 export function MiniCartOverlay() {
@@ -38,13 +39,15 @@ export function MiniCartOverlay() {
       ) : null}
       {showBar ? (
         <div className="pointer-events-auto flex max-w-lg flex-wrap items-center justify-center gap-2 rounded-full bg-surface/95 py-2 pl-5 pr-2 shadow-[0_16px_40px_rgb(36_28_24_/_0.16)] ring-1 ring-border/80 backdrop-blur-xl">
-          <p className="text-sm">
+          <p className="inline-flex items-center gap-2 text-sm">
+            <Icon name="bag-shopping" className="text-xs text-brand" />
             {itemCount} {itemCount === 1 ? "item" : "items"} in cart
           </p>
           <Link href="/cart" className={buttonClassName("ghost", "min-h-10 px-4")}>
             View cart
           </Link>
           <Link href="/checkout" className={buttonClassName("primary", "min-h-10 px-4")}>
+            <Icon name="lock" className="text-xs" />
             Checkout
           </Link>
         </div>

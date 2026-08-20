@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { LogoutButton } from "@/components/auth/logout-button";
-import { AddressDisplay } from "@/components/account/address-display";
-import { buttonClassName } from "@/components/ui/button";
+import { redirect } from "next/navigation";
+import { AccountLinkList, AccountLinkRow } from "@/components/account/account-ui";
+import { AccountPanel } from "@/components/account/account-panel";
+import { AccountShell } from "@/components/account/account-shell";
 import { STORE_NAME } from "@/lib/constants";
 import { loginHref } from "@/lib/login-next";
+import { isPlaceholderProfileName } from "@/lib/profile-cookie";
 import { listAddresses } from "@/server/addresses";
 import { getSession } from "@/server/auth";
-import { redirect } from "next/navigation";
+import { listAccountOrders } from "@/server/orders";
+import { getAccountProfile } from "@/server/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -16,75 +18,68 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ edit?: string; saved?: string }>;
+}) {
   const session = await getSession();
 
   if (!session) {
     redirect(loginHref("/account"));
   }
 
-  const addresses = await listAddresses();
+  const query = await searchParams;
+
+  if (query.edit === "1") {
+    redirect("/account/profile?edit=1");
+  }
+
+  if (query.saved === "1") {
+    redirect("/account/profile?saved=1");
+  }
+
+  const [profile, orders, addresses] = await Promise.all([
+    getAccountProfile(),
+    listAccountOrders(),
+    listAddresses(),
+  ]);
+
+  const displayName = isPlaceholderProfileName(profile.name) ? null : profile.name;
   const defaultAddress = addresses.find((item) => item.isDefault) ?? addresses[0];
+  const latestOrder = orders[0];
 
   return (
-    <div className="flex flex-col gap-10 py-10 md:py-14">
-      <div>
-        <p className="text-xs tracking-[0.18em] uppercase text-muted">Account</p>
-        <h1 className="mt-3 font-serif text-4xl font-medium tracking-tight md:text-5xl">
-          Signed in
-        </h1>
-        <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted">
-          You are signed in with {session.phone}.
-        </p>
-        {session.role === "admin" ? (
-          <p className="mt-4">
-            <Link href="/admin" className="text-sm text-brand hover:underline">
-              Open admin
-            </Link>
-          </p>
-        ) : null}
-      </div>
-      <div className="grid gap-10 lg:grid-cols-2 lg:items-start">
-        <section className="flex flex-col gap-4">
-          <div className="flex items-end justify-between gap-4">
-            <h2 className="font-serif text-2xl">Orders</h2>
-            <Link href="/account/orders" className="text-sm text-brand hover:underline">
-              View orders
-            </Link>
-          </div>
-          <p className="text-sm text-muted">Track packing and delivery from your order list.</p>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/account/orders" className={buttonClassName("secondary", "w-fit")}>
-              Your orders
-            </Link>
-            <Link href="/track" className={buttonClassName("ghost", "w-fit")}>
-              Track an order
-            </Link>
-          </div>
-        </section>
-        <section className="flex flex-col gap-4">
-          <div className="flex items-end justify-between gap-4">
-            <h2 className="font-serif text-2xl">Addresses</h2>
-            <Link href="/account/addresses" className="text-sm text-brand hover:underline">
-              Manage addresses
-            </Link>
-          </div>
-          {defaultAddress ? (
-            <AddressDisplay address={defaultAddress} selected={defaultAddress.isDefault} />
-          ) : (
-            <p className="text-sm text-muted">No saved address yet. You can add one at checkout.</p>
-          )}
-          <Link href="/account/addresses" className={buttonClassName("secondary", "w-fit")}>
-            {addresses.length > 0 ? "Add another address" : "Add an address"}
-          </Link>
-        </section>
-      </div>
-      <div className="flex flex-wrap gap-3">
-        <Link href="/shop" className={buttonClassName("primary")}>
-          Continue shopping
-        </Link>
-        <LogoutButton />
-      </div>
-    </div>
+    <AccountShell profile={profile} current="overview" isAdmin={session.role === "admin"}>
+      <AccountPanel title="Your account" titleId="account-hub">
+        <AccountLinkList labelledBy="account-hub" className="px-5 sm:px-6">
+          <AccountLinkRow
+            href="/account/profile"
+            title="Profile"
+            hint={displayName ?? "Add your name"}
+          />
+          <AccountLinkRow
+            href="/account/orders"
+            title="Orders"
+            hint={
+              orders.length === 0
+                ? "No orders yet"
+                : `${orders.length} ${orders.length === 1 ? "order" : "orders"}${
+                    latestOrder ? ` · latest ${latestOrder.publicNumber}` : ""
+                  }`
+            }
+          />
+          <AccountLinkRow
+            href="/account/addresses"
+            title="Addresses"
+            hint={
+              addresses.length === 0
+                ? "Add a delivery address"
+                : `${addresses.length} saved${defaultAddress ? ` · ${defaultAddress.city}` : ""}`
+            }
+          />
+        </AccountLinkList>
+      </AccountPanel>
+    </AccountShell>
   );
 }
