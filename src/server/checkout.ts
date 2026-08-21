@@ -1,6 +1,6 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { computeCartTotals } from "@/lib/cart";
 import { normalizeIndianPhone } from "@/lib/phone";
 import { isUuid } from "@/lib/cart";
@@ -16,11 +16,12 @@ import {
   variants,
 } from "@/server/db/schema";
 import { isDatabaseConfigured } from "@/server/env";
-import { orderStatusRank } from "@/lib/order-status";
+import { isFresherOrder } from "@/lib/order-freshness";
 import type { OrderStatus, PaymentStatus } from "@/types";
 import { mockReserveStock } from "@/server/queries/mock-catalog";
 import { getServiceablePincode } from "@/server/queries/pincodes";
 import { getStoreSettings } from "@/server/queries/store";
+import { revalidateCatalog } from "@/server/admin/revalidate";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -57,6 +58,12 @@ export type AddressSnapshot = {
   pincode: string;
 };
 
+export type OrderHistoryEvent = {
+  status: OrderStatus;
+  at: string;
+  note?: string | null;
+};
+
 export type PlacedOrder = {
   id: string;
   publicNumber: string;
@@ -76,6 +83,13 @@ export type PlacedOrder = {
   shippingLabel: string;
   grandTotalPaise: number;
   createdAt: string;
+  shippedAt?: string | null;
+  cancelReason?: string | null;
+  courierName?: string | null;
+  trackingId?: string | null;
+  trackingUrl?: string | null;
+  trackingLocation?: string | null;
+  events?: OrderHistoryEvent[];
 };
 
 const memoryOrders = new Map<string, PlacedOrder>();
@@ -91,7 +105,7 @@ function lineName(item: CartLine) {
   return `${item.productName} · ${item.variantName}`;
 }
 
-function mapDbOrder(
+export function mapDbOrder(
   order: {
     id: string;
     publicNumber: string;
@@ -105,7 +119,14 @@ function mapDbOrder(
     shippingPaise: number;
     grandTotalPaise: number;
     createdAt: Date;
+    shippedAt?: Date | null;
+    cancelReason?: string | null;
+    courierName?: string | null;
+    trackingId?: string | null;
+    trackingUrl?: string | null;
+    trackingLocation?: string | null;
     items: Array<{ nameSnapshot: string; qty: number; pricePaise: number }>;
+    events?: Array<{ status: OrderStatus; at: Date; note: string | null }>;
   },
   shippingLabel: string,
 ): PlacedOrder {
@@ -128,6 +149,19 @@ function mapDbOrder(
     shippingLabel,
     grandTotalPaise: order.grandTotalPaise,
     createdAt: order.createdAt.toISOString(),
+    shippedAt: order.shippedAt ? order.shippedAt.toISOString() : null,
+    cancelReason: order.cancelReason ?? null,
+    courierName: order.courierName ?? null,
+    trackingId: order.trackingId ?? null,
+    trackingUrl: order.trackingUrl ?? null,
+    trackingLocation: order.trackingLocation ?? null,
+    events: [...(order.events ?? [])]
+      .sort((left, right) => left.at.getTime() - right.at.getTime())
+      .map((event) => ({
+        status: event.status,
+        at: event.at.toISOString(),
+        note: event.note,
+      })),
   };
 }
 
@@ -173,8 +207,9 @@ export async function upsertOrderCookie(order: PlacedOrder): Promise<OrderCookie
   const userId = session?.userId ?? order.userId ?? "guest";
   const current = await readOrderCookieBook();
   const existing = current?.orders ?? [];
+  const { events: _events, ...cookieOrder } = order;
   const stored = [
-    order,
+    cookieOrder,
     ...existing.filter((item) => item.publicNumber !== order.publicNumber),
   ].slice(0, MAX_STORED_ORDERS);
 
@@ -189,24 +224,6 @@ export function getMemoryOrderByRazorpayOrderId(razorpayOrderId: string) {
   }
 
   return null;
-}
-
-function isFresherOrder(candidate: PlacedOrder, current: PlacedOrder) {
-  const candidateRank = orderStatusRank(candidate.status);
-  const currentRank = orderStatusRank(current.status);
-  if (candidateRank !== currentRank) {
-    return candidateRank > currentRank;
-  }
-
-  if (candidate.paymentStatus === "captured" && current.paymentStatus !== "captured") {
-    return true;
-  }
-
-  if (candidate.razorpayOrderId && !current.razorpayOrderId) {
-    return true;
-  }
-
-  return false;
 }
 
 function mergeOrderSnapshots(
@@ -224,15 +241,6 @@ function mergeOrderSnapshots(
   return isFresherOrder(secondary, primary) ? secondary : primary;
 }
 
-function snapshotLooksUnpaid(order: PlacedOrder) {
-  return (
-    (order.status === "pending_payment" ||
-      order.status === "placed" ||
-      order.status === "payment_failed") &&
-    (order.paymentStatus === "pending" || order.paymentStatus === "failed")
-  );
-}
-
 async function loadDbOrderByPublicNumber(publicNumber: string) {
   if (!isDatabaseConfigured()) {
     return null;
@@ -242,7 +250,12 @@ async function loadDbOrderByPublicNumber(publicNumber: string) {
     const db = getDb();
     const order = await db.query.orders.findFirst({
       where: eq(orders.publicNumber, publicNumber),
-      with: { items: true },
+      with: {
+        items: true,
+        events: {
+          orderBy: [asc(orderEvents.at)],
+        },
+      },
     });
 
     if (!order) {
@@ -269,16 +282,11 @@ export async function getOrderByPublicNumber(number: string) {
     (book?.orders.find(
       (item) => item.publicNumber === decoded || item.publicNumber === number,
     ) as PlacedOrder | undefined) ?? null;
+  const fromDb =
+    (await loadDbOrderByPublicNumber(decoded)) ??
+    (decoded === number ? null : await loadDbOrderByPublicNumber(number));
 
-  let order = mergeOrderSnapshots(fromMemory, fromCookie);
-
-  if (!order || snapshotLooksUnpaid(order)) {
-    const fromDb =
-      (await loadDbOrderByPublicNumber(decoded)) ??
-      (decoded === number ? null : await loadDbOrderByPublicNumber(number));
-    order = mergeOrderSnapshots(order, fromDb);
-  }
-
+  const order = fromDb ?? mergeOrderSnapshots(fromMemory, fromCookie);
   if (order) {
     saveMemoryOrder(order);
   }
@@ -541,6 +549,7 @@ export async function placeOrder(input: z.infer<typeof checkoutBodySchema>) {
   }
 
   await reserveStock(cart.items);
+  revalidateCatalog();
 
   const settings = await getStoreSettings();
   const totals = computeCartTotals(cart.subtotalPaise, cart.shippingPaise);

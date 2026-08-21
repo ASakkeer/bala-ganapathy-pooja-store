@@ -296,43 +296,41 @@ async function saveLiveProduct(body: ProductBody, id?: string) {
   return saved.id;
 }
 
-export async function saveAdminProduct(body: ProductBody, id?: string) {
+export async function saveAdminProduct(
+  body: ProductBody,
+  id?: string,
+  options?: { revalidate?: boolean },
+) {
   assertAlts(body);
+  const shouldRevalidate = options?.revalidate !== false;
+  const mockInput = {
+    name: body.name,
+    slug: body.slug,
+    description: body.description ?? null,
+    howToUse: body.howToUse ?? null,
+    categoryId: body.categoryId,
+    status: body.status,
+    seoTitle: body.seoTitle ?? null,
+    seoDescription: body.seoDescription ?? null,
+    searchKeywords: body.searchKeywords ?? [],
+    images: body.images,
+    isFeatured: body.isFeatured,
+    variants: body.variants,
+  };
 
   try {
-    const saved = mockSaveProduct(
-      {
-        name: body.name,
-        slug: body.slug,
-        description: body.description ?? null,
-        howToUse: body.howToUse ?? null,
-        categoryId: body.categoryId,
-        status: body.status,
-        seoTitle: body.seoTitle ?? null,
-        seoDescription: body.seoDescription ?? null,
-        searchKeywords: body.searchKeywords ?? [],
-        images: body.images,
-        isFeatured: body.isFeatured,
-        variants: body.variants,
-      },
-      id,
-    );
-
     if (isDatabaseConfigured()) {
-      try {
-        const liveId = await saveLiveProduct(body, id);
+      const liveId = await saveLiveProduct(body, id);
+      if (shouldRevalidate) {
         revalidateCatalog(body.slug);
-        return liveId;
-      } catch (error) {
-        if (error instanceof AdminError) {
-          throw error;
-        }
-        revalidateCatalog(body.slug);
-        return saved.id;
       }
+      return liveId;
     }
 
-    revalidateCatalog(body.slug);
+    const saved = mockSaveProduct(mockInput, id);
+    if (shouldRevalidate) {
+      revalidateCatalog(body.slug);
+    }
     return saved.id;
   } catch (error) {
     throw new AdminError(error instanceof Error ? error.message : "Could not save product.", 400);

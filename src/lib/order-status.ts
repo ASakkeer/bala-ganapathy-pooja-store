@@ -1,11 +1,11 @@
-import type { OrderStatus } from "@/types";
+import type { OrderStatus, PaymentStatus } from "@/types";
 
 export const TRACK_STEPS = [
   {
     status: "pending_payment" as const,
     title: "Order placed",
     shortTitle: "Placed",
-    hint: "We have the order. Payment is the next step.",
+    hint: "We have the order.",
   },
   {
     status: "payment_confirmed" as const,
@@ -83,6 +83,19 @@ export function orderStatusLabel(status: OrderStatus) {
   }
 }
 
+export function paymentStatusLabel(status: PaymentStatus) {
+  switch (status) {
+    case "captured":
+      return "Paid";
+    case "failed":
+      return "Payment failed";
+    case "refunded":
+      return "Refunded";
+    default:
+      return "Payment pending";
+  }
+}
+
 export function orderStatusRank(status: OrderStatus) {
   return RANK[status];
 }
@@ -106,10 +119,43 @@ export function orderStatusExplanation(status: OrderStatus) {
     case "delivered":
       return "Reached the delivery address.";
     case "cancelled":
-      return "This order was cancelled. Contact the store if you have questions.";
+      return "This order was cancelled.";
     case "payment_failed":
       return "Payment did not go through. No money was kept. You can try again.";
   }
+}
+
+export const REFUND_WORKING_DAYS_COPY =
+  "The amount will be refunded to the original payment method in 3–5 working days.";
+
+export function orderNeedsRefundNotice(paymentStatus: PaymentStatus) {
+  return paymentStatus === "captured" || paymentStatus === "refunded";
+}
+
+export function parseCancelReason(value: string) {
+  const reason = value.trim().replace(/\s+/g, " ");
+  if (reason.length < 8) {
+    return { error: "Enter a cancellation reason the customer can read (at least 8 characters).", reason: null };
+  }
+  if (reason.length > 400) {
+    return { error: "Keep the cancellation reason under 400 characters.", reason: null };
+  }
+  return { error: null, reason };
+}
+
+export function fulfilmentRank(status: OrderStatus, events: Array<{ status: OrderStatus }> = []) {
+  if (status !== "cancelled" && status !== "payment_failed") {
+    return orderStatusRank(status);
+  }
+
+  let rank = 0;
+  for (const event of events) {
+    if (event.status === "cancelled" || event.status === "payment_failed") {
+      continue;
+    }
+    rank = Math.max(rank, orderStatusRank(event.status));
+  }
+  return rank;
 }
 
 export function formatOrderDate(iso: string) {

@@ -9,6 +9,7 @@ import { parseSearchQuery } from "@/lib/search";
 import { searchProducts } from "@/server/queries/products";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 type SearchPageProps = {
   searchParams: Promise<{ q?: string; page?: string }>;

@@ -14,9 +14,14 @@ export default async function AdminProductsPage() {
           <p className="text-xs tracking-[0.18em] uppercase text-muted">Catalog</p>
           <h1 className="mt-3 font-serif text-4xl font-medium tracking-tight">Products</h1>
         </div>
-        <Link href="/admin/products/new" className={buttonClassName("primary")}>
-          New product
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/products/bulk" className={buttonClassName("secondary")}>
+            Bulk upload
+          </Link>
+          <Link href="/admin/products/new" className={buttonClassName("primary")}>
+            New product
+          </Link>
+        </div>
       </div>
       <div className="overflow-x-auto rounded-2xl bg-surface ring-1 ring-border/80">
         <table className="w-full min-w-[40rem] text-left text-sm">
@@ -35,7 +40,7 @@ export default async function AdminProductsPage() {
                 <td colSpan={5} className="p-0">
                   <EmptyNotice
                     title="No records"
-                    description="No products in the catalog yet. Add the first listing."
+                    description="No products in the catalog yet. Add one listing, or upload a sheet of many products."
                     className="min-h-[12rem] py-10"
                   />
                 </td>

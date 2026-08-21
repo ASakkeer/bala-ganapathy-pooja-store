@@ -111,6 +111,12 @@ export type Order = {
   paymentStatus: PaymentStatus;
   totals: OrderTotals;
   razorpayOrderId?: string | null;
+  shippedAt?: Date | null;
+  cancelReason?: string | null;
+  courierName?: string | null;
+  trackingId?: string | null;
+  trackingUrl?: string | null;
+  trackingLocation?: string | null;
 };
 
 export type OrderItem = {

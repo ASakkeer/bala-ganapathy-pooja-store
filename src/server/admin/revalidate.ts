@@ -30,3 +30,12 @@ export function revalidateStore() {
 export function revalidatePincodes() {
   revalidateTag(CACHE_TAGS.pincodes, "max");
 }
+
+export function revalidateOrder(publicNumber: string) {
+  revalidatePath("/admin/orders");
+  revalidatePath(`/admin/orders/${encodeURIComponent(publicNumber)}`);
+  revalidatePath("/account/orders");
+  revalidatePath(`/account/orders/${encodeURIComponent(publicNumber)}`);
+  revalidatePath(`/order/confirmation/${encodeURIComponent(publicNumber)}`);
+  revalidatePath("/track");
+}

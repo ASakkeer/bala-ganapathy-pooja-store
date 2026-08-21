@@ -1,5 +1,9 @@
 import { cn } from "@/lib/cn";
-import { currentStatusCopy, historyStepCopy, historyStepKind } from "@/lib/order-history-copy";
+import {
+  adminCancelCopy,
+  adminHistoryStepCopy,
+  historyStepKind,
+} from "@/lib/order-history-copy";
 import {
   formatOrderDate,
   formatOrderWhen,
@@ -7,20 +11,7 @@ import {
   TRACK_STEPS,
 } from "@/lib/order-status";
 import type { OrderStatus, PaymentStatus } from "@/types";
-
-export type OrderHistoryEvent = {
-  status: OrderStatus;
-  at: string;
-  note?: string | null;
-};
-
-function customerVisibleReason(reason?: string | null, note?: string | null) {
-  const value = reason?.trim() || note?.trim() || "";
-  if (!value || value.startsWith("Admin set status")) {
-    return "";
-  }
-  return value;
-}
+import type { OrderHistoryEvent } from "@/components/order/order-timeline";
 
 function latestEventFor(events: OrderHistoryEvent[], statuses: OrderStatus[]) {
   return [...events].reverse().find((event) => statuses.includes(event.status));
@@ -37,7 +28,7 @@ function timeForStep(
     return "";
   }
   if (step.status === "shipped" && shippedAt) {
-    return formatOrderDate(shippedAt) || formatOrderWhen(shippedAt);
+    return formatOrderWhen(shippedAt) || formatOrderDate(shippedAt);
   }
   const statuses: OrderStatus[] =
     index === 0 ? ["pending_payment", "placed", step.status] : [step.status];
@@ -51,12 +42,12 @@ function timeForStep(
   return "";
 }
 
-export function OrderTimeline({
+export function AdminOrderHistory({
   status,
   createdAt,
   events = [],
   cancelReason,
-  paymentStatus = "pending",
+  paymentStatus,
   shippedAt,
   amountPaise,
   courierName,
@@ -69,9 +60,9 @@ export function OrderTimeline({
   createdAt: string;
   events?: OrderHistoryEvent[];
   cancelReason?: string | null;
-  paymentStatus?: PaymentStatus;
+  paymentStatus: PaymentStatus;
   shippedAt?: string | null;
-  amountPaise?: number;
+  amountPaise: number;
   courierName?: string | null;
   trackingId?: string | null;
   trackingUrl?: string | null;
@@ -79,12 +70,11 @@ export function OrderTimeline({
   city?: string | null;
 }) {
   const rank = fulfilmentRank(status, events);
-  const failed = status === "payment_failed";
   const cancelled = status === "cancelled";
+  const failed = status === "payment_failed";
   const cancelledEvent = latestEventFor(events, ["cancelled"]);
   const failedEvent = latestEventFor(events, ["payment_failed"]);
-  const reason = customerVisibleReason(cancelReason, cancelledEvent?.note);
-  const refund = paymentStatus === "captured" || paymentStatus === "refunded";
+  const unpaid = paymentStatus === "pending" || paymentStatus === "failed" || failed;
   const copyInput = {
     status,
     paymentStatus,
@@ -92,21 +82,40 @@ export function OrderTimeline({
     trackingId,
     trackingLocation,
     city,
+    amountPaise,
+    cancelReason,
   };
 
   return (
     <ol className="flex flex-col gap-0">
       {TRACK_STEPS.map((step, index) => {
         const kind = historyStepKind(step.status, status, rank);
+        const when = kind === "upcoming" ? "" : timeForStep(index, createdAt, events, shippedAt);
+        const copy = adminHistoryStepCopy(step.status, kind, { ...copyInput, when });
+        const unpaidPayment =
+          step.status === "payment_confirmed" && unpaid && kind === "upcoming";
+        const body = unpaidPayment ? "Customer has not paid yet." : copy;
         const complete = kind === "complete";
         const current = kind === "current";
-        const dimmed = kind === "upcoming";
-        const copy = historyStepCopy(step.status, kind, copyInput);
-        const when = complete || current ? timeForStep(index, createdAt, events, shippedAt) : "";
+        const dimmed = kind === "upcoming" && !unpaidPayment;
         const showTracking =
           (step.status === "shipped" || step.status === "out_for_delivery" || step.status === "delivered") &&
           (complete || current) &&
-          (trackingId || trackingUrl);
+          Boolean(trackingUrl);
+
+        if (kind === "upcoming" && !unpaidPayment) {
+          return (
+            <li key={step.status} className="flex gap-4">
+              <div className="flex flex-col items-center">
+                <span className="mt-1 size-3 rounded-full bg-border ring-4 ring-bg" />
+                {index < TRACK_STEPS.length - 1 ? <span className="w-px flex-1 bg-border" /> : null}
+              </div>
+              <div className={cn("pb-6", index === TRACK_STEPS.length - 1 && !cancelled && !failed && "pb-0")}>
+                <p className="font-medium text-muted">{step.title}</p>
+              </div>
+            </li>
+          );
+        }
 
         return (
           <li key={step.status} className="flex gap-4">
@@ -116,6 +125,7 @@ export function OrderTimeline({
                   "mt-1 size-3 rounded-full ring-4 ring-bg",
                   current && "bg-brand",
                   complete && "bg-success",
+                  unpaidPayment && "bg-border",
                   dimmed && "bg-border",
                 )}
               />
@@ -131,16 +141,8 @@ export function OrderTimeline({
               ) : null}
             </div>
             <div className={cn("pb-6", index === TRACK_STEPS.length - 1 && !cancelled && !failed && "pb-0")}>
-              <p className={cn("font-medium", current ? "text-brand" : dimmed ? "text-muted" : "text-text")}>
-                {step.title}
-              </p>
-              {copy ? <p className="mt-1 text-sm leading-relaxed text-muted">{copy}</p> : null}
-              {showTracking && trackingId ? (
-                <p className="mt-1 text-sm text-text">
-                  Tracking ID {trackingId}
-                  {courierName ? <span className="text-muted"> · {courierName}</span> : null}
-                </p>
-              ) : null}
+              <p className={cn("font-medium", current ? "text-brand" : "text-text")}>{step.title}</p>
+              {body ? <p className="mt-1 text-sm leading-relaxed text-muted">{body}</p> : null}
               {showTracking && trackingUrl ? (
                 <a
                   href={trackingUrl}
@@ -148,10 +150,9 @@ export function OrderTimeline({
                   rel="noreferrer"
                   className="mt-1 inline-flex min-h-11 items-center text-sm text-brand hover:underline"
                 >
-                  Track on courier site
+                  Open courier tracking
                 </a>
               ) : null}
-              {when ? <p className="mt-1 text-xs text-muted">{when}</p> : null}
             </div>
           </li>
         );
@@ -164,22 +165,11 @@ export function OrderTimeline({
           <div>
             <p className="font-medium text-danger">Cancelled</p>
             <p className="mt-1 text-sm leading-relaxed text-muted">
-              {currentStatusCopy({ status, paymentStatus })}
+              {adminCancelCopy({
+                ...copyInput,
+                when: cancelledEvent ? formatOrderWhen(cancelledEvent.at) : "",
+              })}
             </p>
-            {reason ? (
-              <p className="mt-2 text-sm leading-relaxed text-text">
-                <span className="text-muted">Reason: </span>
-                {reason}
-              </p>
-            ) : null}
-            {refund && amountPaise != null ? (
-              <p className="mt-2 text-sm leading-relaxed text-text">
-                The paid amount will be refunded to the original payment method in 3–5 working days.
-              </p>
-            ) : null}
-            {cancelledEvent ? (
-              <p className="mt-1 text-xs text-muted">{formatOrderWhen(cancelledEvent.at)}</p>
-            ) : null}
           </div>
         </li>
       ) : null}
@@ -191,11 +181,9 @@ export function OrderTimeline({
           <div>
             <p className="font-medium text-danger">Payment failed</p>
             <p className="mt-1 text-sm leading-relaxed text-muted">
-              Payment did not go through. No money was kept.
+              Customer payment failed
+              {failedEvent ? ` on ${formatOrderWhen(failedEvent.at)}` : ""}.
             </p>
-            {failedEvent ? (
-              <p className="mt-1 text-xs text-muted">{formatOrderWhen(failedEvent.at)}</p>
-            ) : null}
           </div>
         </li>
       ) : null}

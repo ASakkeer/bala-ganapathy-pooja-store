@@ -7,7 +7,7 @@ import type { CatalogSort } from "@/lib/catalog";
 import { CACHE_TAGS, CACHE_TTL } from "@/lib/cache";
 import { PAGE_SIZE } from "@/lib/constants";
 import { parseSearchQuery, searchPattern } from "@/lib/search";
-import { cachedQuery } from "@/server/cache";
+import { cachedQuery, freshQuery } from "@/server/cache";
 import { getDb } from "@/server/db";
 import { categories, products, variants } from "@/server/db/schema";
 import { isDatabaseConfigured } from "@/server/env";
@@ -319,33 +319,6 @@ export const listCategories = cachedQuery(
   },
 );
 
-export const getProductBySlug = cachedQuery(
-  (slug: string) => ["catalog:product:v2", slug],
-  fetchProductBySlug,
-  {
-    revalidate: CACHE_TTL.products,
-    tags: (slug: string) => [CACHE_TAGS.catalog, CACHE_TAGS.product(slug)],
-  },
-);
-
-export const listProducts = cachedQuery(
-  (options?: Parameters<typeof fetchProducts>[0]) => ["catalog:products:v2", JSON.stringify(options ?? {})],
-  fetchProducts,
-  {
-    revalidate: CACHE_TTL.products,
-    tags: [CACHE_TAGS.catalog],
-  },
-);
-
-export const countProducts = cachedQuery(
-  () => ["catalog:product-count:v2"],
-  fetchProductCount,
-  {
-    revalidate: CACHE_TTL.products,
-    tags: [CACHE_TAGS.catalog],
-  },
-);
-
 export const getCategoryBySlug = cachedQuery(
   (slug: string) => ["catalog:category:v2", slug],
   fetchCategoryBySlug,
@@ -355,27 +328,12 @@ export const getCategoryBySlug = cachedQuery(
   },
 );
 
-export const listCatalog = cachedQuery(
-  (options: Parameters<typeof fetchCatalog>[0]) => ["catalog:list:v2", JSON.stringify(options)],
-  fetchCatalog,
-  {
-    revalidate: CACHE_TTL.products,
-    tags: [CACHE_TAGS.catalog],
-  },
-);
-
-export const searchProducts = cachedQuery(
-  (rawQuery: string, options?: { page?: number; pageSize?: number }) => [
-    "catalog:search:v3",
-    rawQuery,
-    JSON.stringify(options ?? {}),
-  ],
-  fetchSearchProducts,
-  {
-    revalidate: CACHE_TTL.search,
-    tags: [CACHE_TAGS.catalog],
-  },
-);
+/** Price, stock, and product copy must be live when a customer opens a listing or PDP. */
+export const getProductBySlug = freshQuery(fetchProductBySlug);
+export const listProducts = freshQuery(fetchProducts);
+export const countProducts = freshQuery(fetchProductCount);
+export const listCatalog = freshQuery(fetchCatalog);
+export const searchProducts = freshQuery(fetchSearchProducts);
 
 export const getVariantsByIds = cache(async (ids: string[]) => {
   const uniqueIds = [...new Set(ids.filter(Boolean))];

@@ -2,16 +2,20 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { OrderCancelNotice } from "@/components/order/order-cancel-notice";
 import { OrderProgress } from "@/components/order/order-progress";
+import { OrderTimeline, type OrderHistoryEvent } from "@/components/order/order-timeline";
 import { Badge } from "@/components/ui/badge";
-import { buttonClassName } from "@/components/ui/button";
+import { Button, buttonClassName } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { formatPaise } from "@/lib/money";
 import {
   formatOrderDate,
   formatOrderWhen,
-  orderStatusExplanation,
   orderStatusLabel,
 } from "@/lib/order-status";
+import { currentStatusCopy } from "@/lib/order-history-copy";
+import { cn } from "@/lib/cn";
 import type { OrderStatus, PaymentStatus } from "@/types";
 
 const ITEM_PREVIEW = 3;
@@ -28,6 +32,13 @@ export type TrackedOrder = {
   shippingLabel: string;
   grandTotalPaise: number;
   phoneMasked: string;
+  events?: OrderHistoryEvent[];
+  cancelReason?: string | null;
+  shippedAt?: string | null;
+  courierName?: string | null;
+  trackingId?: string | null;
+  trackingUrl?: string | null;
+  trackingLocation?: string | null;
   address: {
     name: string;
     line1: string;
@@ -59,11 +70,15 @@ export function TrackResult({
   phones,
   whatsappUrl,
   onTrackAgain,
+  onRefresh,
+  refreshing = false,
 }: {
   order: TrackedOrder;
   phones: string[];
   whatsappUrl: string | null;
   onTrackAgain: () => void;
+  onRefresh?: () => void;
+  refreshing?: boolean;
 }) {
   const [itemsOpen, setItemsOpen] = useState(false);
   const itemCount = order.items.reduce((sum, item) => sum + item.qty, 0);
@@ -104,16 +119,85 @@ export function TrackResult({
             className="overflow-hidden rounded-[1.25rem] bg-surface px-5 py-6 ring-1 ring-border/80 sm:px-8"
             aria-labelledby="track-status-heading"
           >
-            <p className="text-xs tracking-[0.16em] uppercase text-muted">Current status</p>
-            <h3 id="track-status-heading" className="mt-2 font-serif text-2xl tracking-tight">
-              {orderStatusLabel(order.status)}
-            </h3>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs tracking-[0.16em] uppercase text-muted">Current status</p>
+                <h3 id="track-status-heading" className="mt-2 font-serif text-2xl tracking-tight">
+                  {orderStatusLabel(order.status)}
+                </h3>
+              </div>
+              {onRefresh ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="shrink-0 px-4"
+                  disabled={refreshing}
+                  onClick={onRefresh}
+                >
+                  <Icon name="arrows-rotate" className={cn("text-sm", refreshing && "animate-spin")} />
+                  {refreshing ? "Refreshing…" : "Refresh"}
+                </Button>
+              ) : null}
+            </div>
             <p className="mt-2 max-w-lg text-sm leading-relaxed text-muted">
-              {orderStatusExplanation(order.status)}
+              {currentStatusCopy({
+                status: order.status,
+                paymentStatus: order.paymentStatus,
+                courierName: order.courierName,
+                trackingId: order.trackingId,
+                trackingLocation: order.trackingLocation,
+                city: order.address.city,
+              })}
             </p>
-            {placedWhen ? <p className="mt-3 text-sm text-muted">{placedWhen}</p> : null}
+            {order.trackingId ? (
+              <p className="mt-3 text-sm text-text">
+                {order.courierName ? `${order.courierName} · ` : null}
+                Tracking ID {order.trackingId}
+              </p>
+            ) : null}
+            {order.trackingUrl ? (
+              <a
+                href={order.trackingUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-flex min-h-11 items-center text-sm text-brand hover:underline"
+              >
+                Open courier tracking
+              </a>
+            ) : null}
+            {order.status === "cancelled" ? (
+              <div className="mt-4">
+                <OrderCancelNotice
+                  reason={order.cancelReason}
+                  paymentStatus={order.paymentStatus}
+                  amountPaise={order.grandTotalPaise}
+                />
+              </div>
+            ) : null}
+            {placedWhen && order.status !== "cancelled" ? (
+              <p className="mt-3 text-sm text-muted">{placedWhen}</p>
+            ) : null}
             <div className="mt-6 border-t border-border/80 pt-6">
-              <OrderProgress status={order.status} />
+              <OrderProgress status={order.status} events={order.events} />
+            </div>
+            <div className="mt-8 border-t border-border/80 pt-6">
+              <p className="text-xs tracking-[0.16em] uppercase text-muted">Order history</p>
+              <div className="mt-5">
+                <OrderTimeline
+                  status={order.status}
+                  createdAt={order.createdAt}
+                  events={order.events}
+                  cancelReason={order.cancelReason}
+                  paymentStatus={order.paymentStatus}
+                  shippedAt={order.shippedAt}
+                  amountPaise={order.grandTotalPaise}
+                  courierName={order.courierName}
+                  trackingId={order.trackingId}
+                  trackingUrl={order.trackingUrl}
+                  trackingLocation={order.trackingLocation}
+                  city={order.address.city}
+                />
+              </div>
             </div>
           </section>
 

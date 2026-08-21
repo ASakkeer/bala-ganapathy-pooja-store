@@ -155,6 +155,12 @@ export const orders = pgTable("orders", {
   shippingPaise: integer("shipping_paise").notNull(),
   grandTotalPaise: integer("grand_total_paise").notNull(),
   razorpayOrderId: text("razorpay_order_id"),
+  shippedAt: timestamp("shipped_at", { withTimezone: true }),
+  cancelReason: text("cancel_reason"),
+  courierName: text("courier_name"),
+  trackingId: text("tracking_id"),
+  trackingUrl: text("tracking_url"),
+  trackingLocation: text("tracking_location"),
   createdAt: timestamps.createdAt,
   updatedAt: timestamps.updatedAt,
 });

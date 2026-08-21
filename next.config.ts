@@ -8,6 +8,7 @@ import {
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
+  serverExternalPackages: ["exceljs"],
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60 * 60 * 24 * 30,
@@ -58,6 +59,26 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/admin/:path*",
+        headers: [{ key: "Cache-Control", value: PRIVATE_CACHE_CONTROL }],
+      },
+      {
+        source: "/shop",
+        headers: [{ key: "Cache-Control", value: PRIVATE_CACHE_CONTROL }],
+      },
+      {
+        source: "/shop/:path*",
+        headers: [{ key: "Cache-Control", value: PRIVATE_CACHE_CONTROL }],
+      },
+      {
+        source: "/p/:path*",
+        headers: [{ key: "Cache-Control", value: PRIVATE_CACHE_CONTROL }],
+      },
+      {
+        source: "/c/:path*",
+        headers: [{ key: "Cache-Control", value: PRIVATE_CACHE_CONTROL }],
+      },
+      {
+        source: "/search",
         headers: [{ key: "Cache-Control", value: PRIVATE_CACHE_CONTROL }],
       },
       {

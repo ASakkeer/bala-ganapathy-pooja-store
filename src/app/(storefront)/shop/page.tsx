@@ -5,6 +5,7 @@ import { pageMetadata } from "@/lib/site";
 import { listCatalog } from "@/server/queries/products";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata = pageMetadata({
   title: `All products | ${STORE_NAME}`,

@@ -26,16 +26,20 @@ export function TrackForm({
   const resultRef = useRef<HTMLElement>(null);
   const progress = useActionProgress();
 
+  const lastFocusedNumber = useRef("");
+
   useEffect(() => {
-    if (order) {
-      resultRef.current?.querySelector("h2")?.focus();
-      const scrolling = document.scrollingElement ?? document.documentElement;
-      scrolling.scrollTop = 0;
-      window.scrollTo(0, 0);
+    if (!order || lastFocusedNumber.current === order.publicNumber) {
+      return;
     }
+    lastFocusedNumber.current = order.publicNumber;
+    resultRef.current?.querySelector("h2")?.focus();
+    const scrolling = document.scrollingElement ?? document.documentElement;
+    scrolling.scrollTop = 0;
+    window.scrollTo(0, 0);
   }, [order]);
 
-  async function submit() {
+  async function submit(mode: "lookup" | "refresh" = "lookup") {
     setPending(true);
     progress.begin();
     setError("");
@@ -52,15 +56,23 @@ export function TrackForm({
 
       if (!response.ok) {
         const message = payload.error ?? "We couldn’t find an order with those details.";
+        if (mode === "refresh") {
+          progress.fail(message);
+          return;
+        }
         setError(message);
         progress.fail(message);
         return;
       }
 
       setOrder(payload);
-      progress.succeed("Order found.");
+      progress.succeed(mode === "refresh" ? "Latest status loaded." : "Order found.");
     } catch {
       const message = "Could not look up the order. Please try again.";
+      if (mode === "refresh") {
+        progress.fail(message);
+        return;
+      }
       setError(message);
       progress.fail(message);
     } finally {
@@ -75,6 +87,10 @@ export function TrackForm({
           order={order}
           phones={phones}
           whatsappUrl={whatsappUrl}
+          refreshing={pending || progress.pending}
+          onRefresh={() => {
+            void submit("refresh");
+          }}
           onTrackAgain={() => {
             setOrder(null);
             setError("");

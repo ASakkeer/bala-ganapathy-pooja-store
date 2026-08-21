@@ -49,7 +49,7 @@ export const RETURNS_SECTIONS: PolicySection[] = [
   {
     heading: "Refunds",
     paragraphs: [
-      "Money collected through Razorpay, if refunded, goes back on the original method. Timing depends on the bank or UPI app. Cash on delivery is not offered on this site.",
+      "Money collected through Razorpay, if refunded, goes back on the original payment method in 3–5 working days. After that, the bank or UPI app may take a little longer to show the credit. Cash on delivery is not offered on this site.",
     ],
   },
 ];

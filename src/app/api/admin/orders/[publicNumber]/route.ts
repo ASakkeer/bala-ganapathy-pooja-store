@@ -17,6 +17,13 @@ const bodySchema = z.object({
     "cancelled",
     "payment_failed",
   ]),
+  shippedAt: z.string().trim().optional(),
+  cancelReason: z.string().optional(),
+  deliveryMethod: z.enum(["courier", "store"]).optional(),
+  courierName: z.string().optional(),
+  trackingId: z.string().optional(),
+  trackingUrl: z.string().optional(),
+  trackingLocation: z.string().optional(),
 });
 
 type RouteContext = { params: Promise<{ publicNumber: string }> };
@@ -46,7 +53,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (!parsed.success) {
       return NextResponse.json({ error: "Choose a valid status." }, { status: 400 });
     }
-    const order = await updateAdminOrderStatus(publicNumber, parsed.data.status);
+    const order = await updateAdminOrderStatus(publicNumber, parsed.data);
     return NextResponse.json({ ok: true, order });
   } catch (error) {
     if (error instanceof AuthError || error instanceof AdminError) {

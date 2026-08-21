@@ -36,6 +36,20 @@
       "when": 1787314000000,
       "tag": "0004_search_keywords",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787316000000,
+      "tag": "0005_order_ship_cancel",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787318000000,
+      "tag": "0006_order_tracking",
+      "breakpoints": true
     }
   ]
 }

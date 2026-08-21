@@ -58,6 +58,13 @@ export async function POST(request: Request) {
       shippingLabel: order.shippingLabel,
       grandTotalPaise: order.grandTotalPaise,
       phoneMasked: maskIndianPhone(order.phone),
+      events: order.events ?? [],
+      cancelReason: order.cancelReason ?? null,
+      shippedAt: order.shippedAt ?? null,
+      courierName: order.courierName ?? null,
+      trackingId: order.trackingId ?? null,
+      trackingUrl: order.trackingUrl ?? null,
+      trackingLocation: order.trackingLocation ?? null,
       address: {
         name: order.address.name,
         line1: order.address.line1,

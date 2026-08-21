@@ -24,6 +24,7 @@ export const metadata = pageMetadata({
 });
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 async function HomeHero() {
   const settings = await getStoreSettings();

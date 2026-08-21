@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { AccountOrderDetail } from "@/components/account/account-order-detail";
 import { AccountShell } from "@/components/account/account-shell";
 import { PaymentReturnSync } from "@/components/checkout/payment-return-sync";
-import { OrderInvoice } from "@/components/order/order-invoice";
 import { STORE_NAME } from "@/lib/constants";
 import { listedPhones, whatsappHref } from "@/lib/contact";
 import { loginHref } from "@/lib/login-next";
@@ -72,17 +72,13 @@ export default async function AccountOrderDetailPage({ params, searchParams }: O
         payable={payable}
         active={query.paid === "1" || query.pay_error === "1"}
       />
-      <OrderInvoice
-        order={order}
-        payable={payable}
+      <AccountOrderDetail
+        initialOrder={order}
+        initialPayable={payable}
         razorpayConfigured={isRazorpayConfigured()}
         storeAddress={settings?.address}
         storePhones={listedPhones(settings?.phones)}
         helpHref={helpHref}
-        kicker="Order"
-        headingAs="h2"
-        compact
-        showAllOrders
         notices={
           <>
             {query.pay_failed === "1" && payable ? (

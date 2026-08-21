@@ -3,13 +3,14 @@ import Link from "next/link";
 import { formatAccountPhone } from "@/components/account/account-ui";
 import { StoreLogo } from "@/components/brand/store-logo";
 import { PayButton } from "@/components/checkout/pay-button";
+import { OrderCancelNotice } from "@/components/order/order-cancel-notice";
 import { OrderTimeline } from "@/components/order/order-timeline";
 import { Badge } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { STORE_NAME } from "@/lib/constants";
 import { formatPaise } from "@/lib/money";
-import { formatOrderWhen, orderStatusLabel } from "@/lib/order-status";
+import { formatOrderWhen, orderStatusLabel, paymentStatusLabel } from "@/lib/order-status";
 import type { OrderStatus, PaymentStatus } from "@/types";
 
 export type OrderInvoiceData = {
@@ -22,6 +23,13 @@ export type OrderInvoiceData = {
   shippingPaise: number;
   shippingLabel: string;
   grandTotalPaise: number;
+  events?: Array<{ status: OrderStatus; at: string; note?: string | null }>;
+  cancelReason?: string | null;
+  shippedAt?: string | null;
+  courierName?: string | null;
+  trackingId?: string | null;
+  trackingUrl?: string | null;
+  trackingLocation?: string | null;
   address: {
     name: string;
     phone: string;
@@ -32,19 +40,6 @@ export type OrderInvoiceData = {
     pincode: string;
   };
 };
-
-function paymentStatusLabel(status: PaymentStatus) {
-  switch (status) {
-    case "captured":
-      return "Paid";
-    case "failed":
-      return "Payment failed";
-    case "refunded":
-      return "Refunded";
-    default:
-      return "Payment pending";
-  }
-}
 
 function statusBadgeVariant(status: OrderStatus) {
   if (status === "delivered") {
@@ -63,7 +58,7 @@ function statusBadgeVariant(status: OrderStatus) {
 }
 
 function paymentBadgeVariant(status: PaymentStatus) {
-  if (status === "captured") {
+  if (status === "captured" || status === "refunded") {
     return "success" as const;
   }
 
@@ -79,6 +74,13 @@ function paymentBadgeVariant(status: PaymentStatus) {
 }
 
 function statusCopy(status: string, paymentStatus: string) {
+  if (status === "cancelled") {
+    if (paymentStatus === "captured" || paymentStatus === "refunded") {
+      return "This order was cancelled. The paid amount will be refunded to the original payment method in 3–5 working days.";
+    }
+    return "This order was cancelled. No payment was taken.";
+  }
+
   if (status === "processing" || paymentStatus === "captured") {
     return "Payment is confirmed. The store will pack this order next.";
   }
@@ -104,6 +106,9 @@ export function OrderInvoice({
   showAccountLink = false,
   showAllOrders = false,
   showContinueShopping = true,
+  historyAction,
+  headerAction,
+  invoiceAction,
 }: {
   order: OrderInvoiceData;
   payable: boolean;
@@ -118,6 +123,9 @@ export function OrderInvoice({
   showAccountLink?: boolean;
   showAllOrders?: boolean;
   showContinueShopping?: boolean;
+  historyAction?: ReactNode;
+  headerAction?: ReactNode;
+  invoiceAction?: ReactNode;
 }) {
   const trackHref = `/track?order=${encodeURIComponent(order.publicNumber)}`;
   const placedWhen = formatOrderWhen(order.createdAt);
@@ -153,18 +161,28 @@ export function OrderInvoice({
               {order.publicNumber}
             </HeadingTag>
             {placedWhen ? <p className="mt-2 text-sm text-muted">{placedWhen}</p> : null}
-            <div className="mt-3 flex flex-wrap gap-2 sm:justify-end">
+            <div className="mt-3 flex flex-wrap items-center gap-2 sm:justify-end">
               <Badge variant={statusBadgeVariant(order.status)}>{orderStatusLabel(order.status)}</Badge>
               <Badge variant={paymentBadgeVariant(order.paymentStatus)}>
                 {paymentStatusLabel(order.paymentStatus)}
               </Badge>
             </div>
+            {headerAction ? <div className="mt-3 sm:flex sm:justify-end">{headerAction}</div> : null}
           </div>
         </header>
 
         <p className="border-b border-border/80 bg-brand/[0.04] px-5 py-4 text-sm leading-relaxed text-text sm:px-8">
           {statusCopy(order.status, order.paymentStatus)}
         </p>
+        {order.status === "cancelled" ? (
+          <div className="border-b border-border/80 px-5 py-4 sm:px-8">
+            <OrderCancelNotice
+              reason={order.cancelReason}
+              paymentStatus={order.paymentStatus}
+              amountPaise={order.grandTotalPaise}
+            />
+          </div>
+        ) : null}
 
         <div className="grid gap-8 border-b border-border/80 px-5 py-6 sm:grid-cols-2 sm:px-8">
           <section>
@@ -256,7 +274,11 @@ export function OrderInvoice({
 
       <div className="flex flex-wrap items-start gap-3">
         {payable ? <PayButton publicNumber={order.publicNumber} configured={razorpayConfigured} /> : null}
-        <Link href={trackHref} className={buttonClassName(payable ? "secondary" : "primary")}>
+        {invoiceAction}
+        <Link
+          href={trackHref}
+          className={buttonClassName(payable || invoiceAction ? "secondary" : "primary")}
+        >
           Track order
         </Link>
         {showAccountLink ? (
@@ -285,11 +307,27 @@ export function OrderInvoice({
       </div>
 
       <section className="rounded-[1.25rem] bg-surface px-5 py-6 ring-1 ring-border/80 sm:px-8">
-        <p className="text-[0.65rem] font-medium tracking-[0.16em] uppercase text-muted">
-          Order progress
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <p className="text-[0.65rem] font-medium tracking-[0.16em] uppercase text-muted">
+            Order history
+          </p>
+          {historyAction}
+        </div>
         <div className="mt-5">
-          <OrderTimeline status={order.status} createdAt={order.createdAt} />
+          <OrderTimeline
+            status={order.status}
+            createdAt={order.createdAt}
+            events={order.events}
+            cancelReason={order.cancelReason}
+            paymentStatus={order.paymentStatus}
+            shippedAt={order.shippedAt}
+            amountPaise={order.grandTotalPaise}
+            courierName={order.courierName}
+            trackingId={order.trackingId}
+            trackingUrl={order.trackingUrl}
+            trackingLocation={order.trackingLocation}
+            city={order.address.city}
+          />
         </div>
       </section>
     </div>

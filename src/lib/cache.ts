@@ -6,7 +6,7 @@ export const CACHE_TAGS = {
   product: (slug: string) => `catalog:product:${slug}`,
 } as const;
 
-/** Cross-request TTLs in seconds. Private data must not use these. */
+/** Cross-request TTLs in seconds. Product price/stock is not cached — customers always read live rows. */
 export const CACHE_TTL = {
   categories: 300,
   products: 60,

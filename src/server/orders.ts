@@ -1,15 +1,16 @@
 import "server-only";
 
-import { desc, eq, or } from "drizzle-orm";
+import { desc, eq, or, asc } from "drizzle-orm";
 import { normalizeIndianPhone } from "@/lib/phone";
 import { getSession } from "@/server/auth";
 import {
   getOrderByPublicNumber,
   listCookieOrders,
+  mapDbOrder,
   type PlacedOrder,
 } from "@/server/checkout";
 import { getDb } from "@/server/db";
-import { orders } from "@/server/db/schema";
+import { orderEvents, orders } from "@/server/db/schema";
 import { isDatabaseConfigured } from "@/server/env";
 import { getStoreSettings } from "@/server/queries/store";
 import { isUuid } from "@/lib/cart";
@@ -45,32 +46,18 @@ async function listDbOrdersForSession(userId: string, phone: string): Promise<Pl
       where: isUuid(userId)
         ? or(eq(orders.userId, userId), eq(orders.phone, phone))
         : eq(orders.phone, phone),
-      with: { items: true },
+      with: {
+        items: true,
+        events: {
+          orderBy: [asc(orderEvents.at)],
+        },
+      },
       orderBy: [desc(orders.createdAt)],
     });
     const settings = await getStoreSettings();
     const shippingLabel = settings?.shippingRules?.label ?? "Shipping";
 
-    return rows.map((order) => ({
-      id: order.id,
-      publicNumber: order.publicNumber,
-      userId: order.userId,
-      phone: order.phone,
-      address: order.addressSnapshot as PlacedOrder["address"],
-      status: order.status,
-      paymentStatus: order.paymentStatus,
-      razorpayOrderId: order.razorpayOrderId,
-      items: order.items.map((item) => ({
-        name: item.nameSnapshot,
-        qty: item.qty,
-        pricePaise: item.pricePaise,
-      })),
-      subtotalPaise: order.subtotalPaise,
-      shippingPaise: order.shippingPaise,
-      shippingLabel,
-      grandTotalPaise: order.grandTotalPaise,
-      createdAt: order.createdAt.toISOString(),
-    }));
+    return rows.map((order) => mapDbOrder(order, shippingLabel));
   } catch {
     return [];
   }
@@ -91,7 +78,9 @@ export async function listAccountOrders() {
   }
 
   for (const order of fromCookie) {
-    byNumber.set(order.publicNumber, order);
+    if (!byNumber.has(order.publicNumber)) {
+      byNumber.set(order.publicNumber, order);
+    }
   }
 
   return [...byNumber.values()].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
@@ -128,7 +117,8 @@ export async function trackOrderByNumberAndPhone(publicNumber: string, rawPhone:
   }
 
   const order = await getOrderByPublicNumber(trimmed);
-  if (!order || order.phone !== phone) {
+  const orderPhone = order ? (normalizeIndianPhone(order.phone) ?? order.phone) : null;
+  if (!order || orderPhone !== phone) {
     return null;
   }
 

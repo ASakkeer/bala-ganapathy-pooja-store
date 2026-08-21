@@ -5,7 +5,7 @@ import { unstable_cache } from "next/cache";
 
 /**
  * Request memoization plus cross-request Data Cache.
- * Use only for public, non-user-specific payloads.
+ * Use only for public, non-user-specific payloads that can be slightly stale.
  */
 export function cachedQuery<Args extends unknown[], Result>(
   key: (...args: Args) => string[],
@@ -22,4 +22,11 @@ export function cachedQuery<Args extends unknown[], Result>(
       tags,
     })();
   });
+}
+
+/** Request memoization only — always hits the database on a new page load. */
+export function freshQuery<Args extends unknown[], Result>(
+  fn: (...args: Args) => Promise<Result>,
+): (...args: Args) => Promise<Result> {
+  return cache((...args: Args) => fn(...args));
 }

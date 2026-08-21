@@ -17,8 +17,11 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.3.1",
     "drizzle-orm": "^0.45.2",
+    "exceljs": "^4.4.0",
+    "jszip": "^3.10.1",
     "next": "16.3.1",
     "nextjs-toploader": "^3.9.17",
+    "pdf-lib": "^1.17.1",
     "postgres": "^3.4.9",
     "razorpay": "^2.9.8",
     "react": "19.2.8",

@@ -13,6 +13,7 @@ import { absoluteUrl, pageMetadata } from "@/lib/site";
 import { getProductBySlug, listProducts } from "@/server/queries/products";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 type ProductPageProps = {
   params: Promise<{ slug: string }>;
