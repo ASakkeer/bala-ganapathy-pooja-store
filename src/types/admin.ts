@@ -9,6 +9,7 @@ export type AdminProduct = {
   status: "draft" | "active" | "archived";
   seoTitle: string | null;
   seoDescription: string | null;
+  searchKeywords: string[];
   images: string[];
   isFeatured: boolean;
   variants: Array<{

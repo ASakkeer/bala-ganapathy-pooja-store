@@ -6,6 +6,7 @@ import { revalidateCatalog } from "@/server/admin/revalidate";
 import { getDb } from "@/server/db";
 import { categories, products, variants } from "@/server/db/schema";
 import { isDatabaseConfigured } from "@/server/env";
+import { parseSearchKeywords } from "@/lib/search";
 import { slugify } from "@/lib/slug";
 import { CATEGORIES } from "@/content/catalog";
 import { HOME_RITUAL_SLUGS, HOME_RITUAL_TILES, isHomeRitualSlug } from "@/content/home-rituals";
@@ -63,6 +64,10 @@ export const productBodySchema = z.object({
   status: z.enum(["draft", "active", "archived"]),
   seoTitle: z.string().trim().max(160).nullable().optional(),
   seoDescription: z.string().trim().max(300).nullable().optional(),
+  searchKeywords: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .transform((value) => parseSearchKeywords(value)),
   images: z.array(imageUrlSchema).max(8),
   imageAlts: z.array(z.string().trim().min(1, "Each image needs alt text.")).max(8),
   isFeatured: z.boolean(),
@@ -93,6 +98,7 @@ function mapMock(product: ReturnType<typeof mockGetProductById>): AdminProduct |
     status: product.status,
     seoTitle: product.seoTitle,
     seoDescription: product.seoDescription,
+    searchKeywords: product.searchKeywords ?? [],
     images: product.images,
     isFeatured: product.isFeatured,
     variants: product.variants.map((variant) => ({
@@ -150,6 +156,7 @@ export async function listAdminProducts(): Promise<AdminProduct[]> {
       status: product.status,
       seoTitle: product.seoTitle,
       seoDescription: product.seoDescription,
+      searchKeywords: product.searchKeywords ?? [],
       images: product.images,
       isFeatured: product.isFeatured,
       variants: product.variants.map((variant) => ({
@@ -194,6 +201,7 @@ export async function getAdminProduct(id: string): Promise<AdminProduct | null> 
       status: product.status,
       seoTitle: product.seoTitle,
       seoDescription: product.seoDescription,
+      searchKeywords: product.searchKeywords ?? [],
       images: product.images,
       isFeatured: product.isFeatured,
       variants: product.variants.map((variant) => ({
@@ -238,6 +246,7 @@ async function saveLiveProduct(body: ProductBody, id?: string) {
     status: body.status,
     seoTitle: body.seoTitle ?? null,
     seoDescription: body.seoDescription ?? null,
+    searchKeywords: body.searchKeywords ?? [],
     images: body.images,
     isFeatured: body.isFeatured,
     updatedAt: new Date(),
@@ -301,6 +310,7 @@ export async function saveAdminProduct(body: ProductBody, id?: string) {
         status: body.status,
         seoTitle: body.seoTitle ?? null,
         seoDescription: body.seoDescription ?? null,
+        searchKeywords: body.searchKeywords ?? [],
         images: body.images,
         isFeatured: body.isFeatured,
         variants: body.variants,

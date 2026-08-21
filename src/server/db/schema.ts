@@ -94,6 +94,10 @@ export const products = pgTable("products", {
   status: productStatusEnum("status").default("draft").notNull(),
   seoTitle: text("seo_title"),
   seoDescription: text("seo_description"),
+  searchKeywords: text("search_keywords")
+    .array()
+    .notNull()
+    .default(sql`ARRAY[]::text[]`),
   images: text("images")
     .array()
     .notNull()

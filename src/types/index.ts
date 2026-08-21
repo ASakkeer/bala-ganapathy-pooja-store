@@ -50,6 +50,7 @@ export type Product = {
   status: ProductStatus;
   seoTitle?: string | null;
   seoDescription?: string | null;
+  searchKeywords?: string[];
   images: string[];
   isFeatured: boolean;
 };

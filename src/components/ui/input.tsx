@@ -15,7 +15,7 @@ export function Input({ className, error, id, ...props }: InputProps) {
         aria-describedby={error ? errorId : undefined}
         className={cn(
           "h-11 w-full rounded-full bg-brand/[0.04] px-4 text-text ring-1 ring-transparent transition-shadow",
-          "placeholder:text-muted",
+          "placeholder:text-muted/40",
           "focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30",
           "disabled:cursor-not-allowed disabled:opacity-50",
           error && "ring-danger/40",

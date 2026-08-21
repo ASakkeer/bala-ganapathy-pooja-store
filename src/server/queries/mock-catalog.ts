@@ -151,9 +151,14 @@ export function mockSearchProducts(
       return catalogProductMatchesQuery(content, needle);
     }
 
+    const keywords = product.searchKeywords.join(" ").toLowerCase();
     return (
       product.name.toLowerCase().includes(needle) ||
-      product.slug.toLowerCase().includes(needle)
+      product.slug.toLowerCase().includes(needle) ||
+      (product.description ?? "").toLowerCase().includes(needle) ||
+      (product.seoTitle ?? "").toLowerCase().includes(needle) ||
+      (product.seoDescription ?? "").toLowerCase().includes(needle) ||
+      keywords.includes(needle)
     );
   }).sort((a, b) => {
     if (a.isFeatured !== b.isFeatured) {
@@ -267,6 +272,7 @@ export type MockProductWrite = {
   status: ProductStatus;
   seoTitle: string | null;
   seoDescription: string | null;
+  searchKeywords: string[];
   images: string[];
   isFeatured: boolean;
   variants: Array<{
@@ -321,6 +327,7 @@ export function mockSaveProduct(input: MockProductWrite, id?: string) {
     status: input.status,
     seoTitle: input.seoTitle,
     seoDescription: input.seoDescription,
+    searchKeywords: input.searchKeywords,
     images: input.images,
     isFeatured: input.isFeatured,
     createdAt: existing?.createdAt ?? now,

@@ -2,7 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 import { and, asc, desc, eq, exists, gt, ilike, inArray, or, sql } from "drizzle-orm";
-import { CATALOG_PRODUCTS, catalogProductMatchesQuery, getCatalogProduct } from "@/content/catalog";
+import { getCatalogProduct } from "@/content/catalog";
 import type { CatalogSort } from "@/lib/catalog";
 import { CACHE_TAGS, CACHE_TTL } from "@/lib/cache";
 import { PAGE_SIZE } from "@/lib/constants";
@@ -268,14 +268,13 @@ async function fetchSearchProducts(
       const db = getDb();
       const offset = (page - 1) * pageSize;
       const pattern = searchPattern(query);
-      const aliasSlugs = CATALOG_PRODUCTS.filter((item) =>
-        catalogProductMatchesQuery(item, query),
-      ).map((item) => item.slug);
       const matchers = [
         ilike(products.name, pattern),
         ilike(products.slug, pattern),
         ilike(products.description, pattern),
-        ...(aliasSlugs.length > 0 ? [inArray(products.slug, aliasSlugs)] : []),
+        ilike(products.seoTitle, pattern),
+        ilike(products.seoDescription, pattern),
+        ilike(sql`array_to_string(${products.searchKeywords}, ' ')`, pattern),
       ];
       const whereClause = and(eq(products.status, "active"), or(...matchers));
 
@@ -367,7 +366,7 @@ export const listCatalog = cachedQuery(
 
 export const searchProducts = cachedQuery(
   (rawQuery: string, options?: { page?: number; pageSize?: number }) => [
-    "catalog:search:v2",
+    "catalog:search:v3",
     rawQuery,
     JSON.stringify(options ?? {}),
   ],

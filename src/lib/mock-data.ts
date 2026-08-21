@@ -76,6 +76,7 @@ export type MockProduct = {
   status: "draft" | "active" | "archived";
   seoTitle: string | null;
   seoDescription: string | null;
+  searchKeywords: string[];
   images: string[];
   isFeatured: boolean;
   createdAt: Date;
@@ -107,6 +108,7 @@ export const MOCK_PRODUCTS: MockProduct[] = CATALOG_PRODUCTS.map((item) => {
     status: "active" as const,
     seoTitle: `${item.name} / ${item.nameTa}`,
     seoDescription: item.shortDescription,
+    searchKeywords: item.aliases,
     images: item.images,
     isFeatured: item.isFeatured,
     createdAt,

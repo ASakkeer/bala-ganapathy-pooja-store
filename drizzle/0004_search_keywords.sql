@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "search_keywords" text[] DEFAULT ARRAY[]::text[] NOT NULL;
