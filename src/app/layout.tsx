@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Noto_Sans_Tamil, Plus_Jakarta_Sans, Source_Serif_4 } from "next/font/google";
+import { Hanken_Grotesk, Libre_Caslon_Text, Noto_Sans_Tamil } from "next/font/google";
 import { ScrollToTop } from "@/components/layout/scroll-to-top";
+import { AppProviders } from "@/components/ui/app-providers";
 import { STORE_LOGO_SRC, STORE_NAME } from "@/lib/constants";
 import { siteOrigin } from "@/lib/site";
 import "./globals.css";
 
-const plusJakarta = Plus_Jakarta_Sans({
+const hanken = Hanken_Grotesk({
   subsets: ["latin"],
-  variable: "--font-plus-jakarta",
+  weight: ["400", "600"],
+  variable: "--font-hanken",
   display: "swap",
 });
 
@@ -18,9 +20,10 @@ const notoTamil = Noto_Sans_Tamil({
   display: "swap",
 });
 
-const sourceSerif = Source_Serif_4({
+const libreCaslon = Libre_Caslon_Text({
   subsets: ["latin"],
-  variable: "--font-source-serif",
+  weight: ["400", "700"],
+  variable: "--font-libre",
   display: "swap",
 });
 
@@ -43,13 +46,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${plusJakarta.variable} ${sourceSerif.variable} ${notoTamil.variable} h-full antialiased`}
+      className={`${hanken.variable} ${libreCaslon.variable} ${notoTamil.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-bg font-sans text-text">
-        {children}
-        <Suspense fallback={null}>
-          <ScrollToTop />
-        </Suspense>
+      <body className="flex min-h-full flex-col bg-surface font-sans text-on-surface">
+        <AppProviders>
+          {children}
+          <Suspense fallback={null}>
+            <ScrollToTop />
+          </Suspense>
+        </AppProviders>
       </body>
     </html>
   );

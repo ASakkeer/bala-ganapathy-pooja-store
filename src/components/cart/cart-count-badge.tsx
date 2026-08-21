@@ -13,10 +13,8 @@ export function CartCountBadge() {
       {itemCount > 0 ? (
         <span
           aria-hidden
-          className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-brand text-[10px] text-on-brand"
-        >
-          {itemCount > 99 ? "99+" : itemCount}
-        </span>
+          className="absolute top-1 right-1 size-2 rounded-full bg-error"
+        />
       ) : null}
     </>
   );

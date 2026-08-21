@@ -38,7 +38,7 @@ export function MobileNav() {
     <div className="md:hidden">
       <button
         type="button"
-        className="relative z-50 inline-flex size-11 items-center justify-center text-text hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        className="relative z-50 inline-flex size-11 items-center justify-center text-primary hover:text-primary-container focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((current) => !current)}
@@ -56,7 +56,7 @@ export function MobileNav() {
           />
           <div
             id={panelId}
-            className="absolute inset-x-0 top-full z-40 max-h-[calc(100dvh-8rem)] overflow-y-auto border-b border-border/80 bg-bg"
+            className="absolute inset-x-0 top-full z-40 max-h-[calc(100dvh-8rem)] overflow-y-auto border-b border-outline-variant bg-surface"
           >
             <nav aria-label="Product categories" className="flex flex-col px-4 py-6 sm:px-6">
               {CATEGORIES.map((category) => (

@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useTopLoader } from "nextjs-toploader";
+import { useToast } from "@/components/ui/toast";
 import {
   clearPendingCartAction,
   readPendingCartAction,
@@ -80,6 +82,15 @@ export function CartProvider({
   const toastTimer = useRef(0);
   const completingIntent = useRef(false);
   const initialKey = initialLines.map((item) => `${item.variantId}:${item.qty}`).join("|");
+  const loader = useTopLoader();
+  const toastNotify = useToast();
+  const loaderRef = useRef(loader);
+  const toastRef = useRef(toastNotify);
+
+  useEffect(() => {
+    loaderRef.current = loader;
+    toastRef.current = toastNotify;
+  }, [loader, toastNotify]);
 
   useEffect(() => {
     document.documentElement.dataset.cartReady = "true";
@@ -109,6 +120,7 @@ export function CartProvider({
 
     completingIntent.current = true;
     clearPendingCartAction();
+    loaderRef.current.start();
 
     void (async () => {
       try {
@@ -123,6 +135,8 @@ export function CartProvider({
 
         if (!response.ok) {
           completingIntent.current = false;
+          loaderRef.current.done(true);
+          toastRef.current.error(payload.error ?? "Could not add to cart. Please try again.");
           return;
         }
 
@@ -138,10 +152,15 @@ export function CartProvider({
 
         if (pending.redirectTo?.startsWith("/") && !pending.redirectTo.startsWith("//")) {
           window.location.replace(pending.redirectTo);
+          return;
         }
+
+        loaderRef.current.done(true);
       } catch {
         savePendingCartAction(pending);
         completingIntent.current = false;
+        loaderRef.current.done(true);
+        toastRef.current.error("Could not add to cart. Please try again.");
       }
     })();
   }, [signedIn]);

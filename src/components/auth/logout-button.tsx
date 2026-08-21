@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Icon } from "@/components/ui/icon";
+import { useActionProgress } from "@/components/progress/use-action-progress";
 
 export function LogoutButton({
   className,
@@ -14,11 +15,19 @@ export function LogoutButton({
 }) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
+  const progress = useActionProgress();
 
   async function logout() {
     setPending(true);
-    await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
-    window.location.replace("/");
+    progress.begin();
+    try {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+      progress.succeed("Signed out.", { keep: true });
+      window.location.replace("/");
+    } catch {
+      progress.fail("Could not sign out. Please try again.");
+      setPending(false);
+    }
   }
 
   return (
@@ -27,7 +36,7 @@ export function LogoutButton({
         type="button"
         variant={variant}
         className={className}
-        disabled={pending}
+        disabled={pending || progress.pending}
         onClick={() => setOpen(true)}
       >
         {pending ? "Signing out…" : (
@@ -43,7 +52,7 @@ export function LogoutButton({
         description="You'll need your mobile number to sign in again. Your cart stays on this device after you return."
         confirmLabel="Sign out"
         tone="brand"
-        pending={pending}
+        pending={pending || progress.pending}
         onCancel={() => {
           if (!pending) {
             setOpen(false);

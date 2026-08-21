@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/components/progress/navigation";
+import { useActionProgress } from "@/components/progress/use-action-progress";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { nextOrderStatuses } from "@/lib/order-transitions";
@@ -21,6 +22,7 @@ export function OrderStatusForm({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
+  const progress = useActionProgress();
 
   if (options.length === 0) {
     return <p className="text-sm text-muted">This order has no further status changes.</p>;
@@ -37,6 +39,7 @@ export function OrderStatusForm({
 
   async function saveStatus(status: OrderStatus) {
     setPending(true);
+    progress.begin();
     setError("");
     try {
       const response = await fetch(`/api/admin/orders/${encodeURIComponent(publicNumber)}`, {
@@ -50,9 +53,12 @@ export function OrderStatusForm({
         throw new Error(payload.error ?? "Could not update status.");
       }
       setCancelOpen(false);
+      progress.succeed("Order status updated.");
       router.refresh();
     } catch (updateError) {
-      setError(updateError instanceof Error ? updateError.message : "Could not update status.");
+      const message = updateError instanceof Error ? updateError.message : "Could not update status. Please try again.";
+      setError(message);
+      progress.fail(message);
     } finally {
       setPending(false);
     }
@@ -76,7 +82,7 @@ export function OrderStatusForm({
         ))}
       </select>
       {error ? <p className="text-sm text-danger">{error}</p> : null}
-      <Button type="submit" disabled={pending} className="w-fit">
+      <Button type="submit" disabled={pending || progress.pending} className="w-fit">
         {pending ? "Saving…" : "Update status"}
       </Button>
       <ConfirmDialog
@@ -84,9 +90,9 @@ export function OrderStatusForm({
         title="Cancel this order?"
         description={`${publicNumber} will be marked cancelled. This cannot be undone from here.`}
         confirmLabel="Cancel order"
-        pending={pending}
+        pending={pending || progress.pending}
         onCancel={() => {
-          if (!pending) {
+          if (!pending && !progress.pending) {
             setCancelOpen(false);
           }
         }}

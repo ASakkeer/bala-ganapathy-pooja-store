@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/components/progress/navigation";
+import { useActionProgress } from "@/components/progress/use-action-progress";
 import {
   snapshotFromPayload,
   useCartUi,
@@ -27,16 +28,18 @@ export function CartLineControls({
 }) {
   const router = useRouter();
   const { applySnapshot } = useCartUi();
+  const progress = useActionProgress();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [confirmRemove, setConfirmRemove] = useState(false);
 
   async function update(nextQty: number) {
-    if (pending) {
+    if (pending || progress.pending) {
       return;
     }
 
     setPending(true);
+    progress.begin();
     setError("");
 
     try {
@@ -56,15 +59,20 @@ export function CartLineControls({
       }
 
       if (!response.ok) {
-        setError(payload.error ?? "Could not update cart.");
+        const message = payload.error ?? "Could not update cart. Please try again.";
+        setError(message);
+        progress.fail(message);
         return;
       }
 
       applySnapshot(snapshotFromPayload(payload));
       setConfirmRemove(false);
+      progress.succeed();
       router.refresh();
     } catch {
-      setError("Could not update cart.");
+      const message = "Could not update cart. Please try again.";
+      setError(message);
+      progress.fail(message);
     } finally {
       setPending(false);
     }
@@ -83,7 +91,7 @@ export function CartLineControls({
             type="button"
             className="inline-flex size-11 items-center justify-center"
             aria-label={`Decrease quantity of ${productName}`}
-            disabled={pending || (!compact && qty <= 1)}
+            disabled={pending || progress.pending || (!compact && qty <= 1)}
             onClick={() => update(qty <= 1 ? 0 : qty - 1)}
           >
             <Icon name="minus" className="text-xs" />
@@ -98,7 +106,7 @@ export function CartLineControls({
             type="button"
             className="inline-flex size-11 items-center justify-center"
             aria-label={`Increase quantity of ${productName}`}
-            disabled={pending || qty >= stockQty}
+            disabled={pending || progress.pending || qty >= stockQty}
             onClick={() => update(qty + 1)}
           >
             <Icon name="plus" className="text-xs" />
@@ -108,7 +116,7 @@ export function CartLineControls({
           <button
             type="button"
             className="inline-flex min-h-11 items-center gap-2 px-3 text-sm text-muted hover:text-danger"
-            disabled={pending}
+            disabled={pending || progress.pending}
             onClick={() => setConfirmRemove(true)}
           >
             <Icon name="trash-can" kit="regular" className="text-xs" />
@@ -122,9 +130,9 @@ export function CartLineControls({
         title="Remove from cart?"
         description={`${productName} will be taken out of your cart. You can add it again from the shop.`}
         confirmLabel="Remove"
-        pending={pending}
+        pending={pending || progress.pending}
         onCancel={() => {
-          if (!pending) {
+          if (!pending && !progress.pending) {
             setConfirmRemove(false);
           }
         }}

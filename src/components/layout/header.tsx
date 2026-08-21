@@ -2,27 +2,21 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { StoreLogo } from "@/components/brand/store-logo";
 import { CartCountBadge } from "@/components/cart/cart-count-badge";
+import { HeaderCategoryNav } from "@/components/layout/header-category-nav";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { SearchField, SearchForm } from "@/components/layout/search-field";
 import { Container } from "@/components/ui/container";
 import { Icon } from "@/components/ui/icon";
-import { firstPhone, whatsappHref } from "@/lib/contact";
 import { loginHref } from "@/lib/login-next";
-import {
-  CATEGORIES,
-  STORE_NAME,
-} from "@/lib/constants";
+import { STORE_NAME } from "@/lib/constants";
+import { whatsappHref } from "@/lib/contact";
 
 const iconLinkClassName =
-  "inline-flex size-11 items-center justify-center text-text transition-colors hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
-
-const categoryLinkClassName =
-  "inline-flex min-h-11 items-center px-3 text-[0.72rem] font-medium tracking-[0.14em] uppercase text-muted transition-colors hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
+  "inline-flex size-10 items-center justify-center rounded-full p-2 text-primary transition-all hover:bg-surface-container-highest hover:text-primary-container focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
 export function Header({
   signedIn = false,
   isAdmin = false,
-  phones,
   whatsapp,
 }: {
   signedIn?: boolean;
@@ -30,91 +24,62 @@ export function Header({
   phones?: string[] | null;
   whatsapp?: string | null;
 }) {
-  const phone = firstPhone(phones);
   const chatHref = whatsappHref(whatsapp);
 
   return (
-    <header className="relative border-b border-border/80 bg-bg/90 backdrop-blur-xl">
-      <div className="hidden border-b border-border/60 md:block">
-        <Container className="flex h-9 items-center justify-between gap-4 text-[0.7rem] tracking-[0.12em] uppercase text-muted">
-          <p className="inline-flex items-center gap-2">
-            <Icon name="location-dot" className="text-[0.65rem] text-brand" />
-            R.S. Puram, Coimbatore
-          </p>
-          <nav aria-label="Help" className="flex items-center gap-5">
-            <Link href="/track" className="inline-flex items-center gap-2 hover:text-brand">
-              <Icon name="truck" className="text-[0.65rem]" />
-              Track order
+    <header className="border-b border-outline-variant bg-surface/95 shadow-sm backdrop-blur-md">
+      <Container className="flex flex-col py-4">
+        <div className="flex items-center justify-between gap-grid-gutter pb-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <MobileNav />
+            <Link
+              href="/"
+              aria-label={STORE_NAME}
+              className="min-w-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <StoreLogo size="header" decorative />
             </Link>
-            <Link href="/contact" className="inline-flex items-center gap-2 hover:text-brand">
-              <Icon name="headset" className="text-[0.65rem]" />
-              Contact
-            </Link>
-            {phone ? (
-              <a href={`tel:${phone}`} className="inline-flex items-center gap-2 hover:text-brand">
-                <Icon name="phone" className="text-[0.65rem]" />
-                {phone}
+          </div>
+          <Suspense
+            fallback={
+              <SearchForm id="site-search-desktop" tone="bar" className="hidden min-w-0 max-w-xl flex-1 md:block" />
+            }
+          >
+            <SearchField
+              id="site-search-desktop"
+              tone="bar"
+              className="hidden min-w-0 max-w-xl flex-1 md:block"
+            />
+          </Suspense>
+          <div className="flex items-center gap-2 text-primary md:gap-4">
+            {chatHref ? (
+              <a href={chatHref} className={`${iconLinkClassName} hidden lg:inline-flex`}>
+                <Icon name="whatsapp" kit="brands" className="text-[1.15rem]" />
+                <span className="sr-only">WhatsApp</span>
               </a>
             ) : null}
-          </nav>
-        </Container>
-      </div>
-      <Container>
-        <div className="flex items-center gap-2 py-3 md:gap-4 md:py-4">
-          <MobileNav />
-          <Link
-            href="/"
-            aria-label={STORE_NAME}
-            className="min-w-0 flex-1 md:flex-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-          >
-            <StoreLogo size="header" decorative />
-          </Link>
-          <Suspense fallback={<SearchForm id="site-search-desktop" className="hidden min-w-0 flex-1 md:block" />}>
-            <SearchField id="site-search-desktop" className="hidden min-w-0 flex-1 md:block" />
-          </Suspense>
-          {chatHref ? (
-            <a href={chatHref} className={`${iconLinkClassName} hidden lg:inline-flex`}>
-              <Icon name="whatsapp" kit="brands" className="text-[1.15rem]" />
-              <span className="sr-only">WhatsApp</span>
-            </a>
-          ) : null}
-          <Link
-            href={signedIn ? "/account" : loginHref("/account")}
-            aria-label={signedIn ? "Account" : "Sign in"}
-            className={iconLinkClassName}
-          >
-            <Icon name="user" kit="regular" className="text-[1.15rem]" />
-          </Link>
-          {isAdmin ? (
-            <Link href="/admin" aria-label="Admin" className={`${iconLinkClassName} hidden sm:inline-flex`}>
-              <Icon name="gear" className="text-[1.1rem]" />
-            </Link>
-          ) : null}
-          <Link href={signedIn ? "/cart" : loginHref("/cart")} className={`${iconLinkClassName} relative`}>
-            <Icon name="bag-shopping" className="text-[1.15rem]" />
-            <CartCountBadge />
-          </Link>
-        </div>
-        <Suspense fallback={<SearchForm id="site-search-mobile" className="pb-3 md:hidden" />}>
-          <SearchField id="site-search-mobile" className="pb-3 md:hidden" />
-        </Suspense>
-        <nav
-          aria-label="Product categories"
-          className="hidden flex-wrap items-center gap-x-1 border-t border-border/60 md:flex"
-        >
-          {CATEGORIES.map((category) => (
             <Link
-              key={category.slug}
-              href={`/c/${category.slug}`}
-              className={categoryLinkClassName}
+              href={signedIn ? "/account" : loginHref("/account")}
+              aria-label={signedIn ? "Account" : "Sign in"}
+              className={iconLinkClassName}
             >
-              {category.shortName}
+              <Icon name="user" kit="regular" className="text-[1.2rem]" />
             </Link>
-          ))}
-          <Link href="/shop" className={categoryLinkClassName}>
-            All products
-          </Link>
-        </nav>
+            {isAdmin ? (
+              <Link href="/admin" aria-label="Admin" className={`${iconLinkClassName} hidden sm:inline-flex`}>
+                <Icon name="gear" className="text-[1.1rem]" />
+              </Link>
+            ) : null}
+            <Link href={signedIn ? "/cart" : loginHref("/cart")} className={`${iconLinkClassName} relative`}>
+              <Icon name="bag-shopping" className="text-[1.2rem]" />
+              <CartCountBadge />
+            </Link>
+          </div>
+        </div>
+        <Suspense fallback={<SearchForm id="site-search-mobile" tone="bar" className="pb-3 md:hidden" />}>
+          <SearchField id="site-search-mobile" tone="bar" className="pb-3 md:hidden" />
+        </Suspense>
+        <HeaderCategoryNav />
       </Container>
     </header>
   );

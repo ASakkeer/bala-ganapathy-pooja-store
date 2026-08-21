@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/components/progress/navigation";
+import { useActionProgress } from "@/components/progress/use-action-progress";
 import { formatAddressLines } from "@/components/account/address-display";
 import { formatAccountPhone } from "@/components/account/account-ui";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,7 @@ export function SavedAddressList({
   nextPath?: string;
 }) {
   const router = useRouter();
+  const progress = useActionProgress();
   const [pendingId, setPendingId] = useState("");
   const [error, setError] = useState("");
   const [removeId, setRemoveId] = useState("");
@@ -33,33 +35,57 @@ export function SavedAddressList({
 
   async function setDefault(id: string) {
     setPendingId(id);
+    progress.begin();
     setError("");
-    const response = await fetch(`/api/addresses/${id}`, {
-      method: "PATCH",
-      credentials: "same-origin",
-    });
-    if (!response.ok) {
-      setError("Could not set the default address.");
+    try {
+      const response = await fetch(`/api/addresses/${id}`, {
+        method: "PATCH",
+        credentials: "same-origin",
+      });
+      if (!response.ok) {
+        const message = "Could not set the default address. Please try again.";
+        setError(message);
+        progress.fail(message);
+        setPendingId("");
+        return;
+      }
+      progress.succeed("Default address updated.");
+      setPendingId("");
+      router.refresh();
+    } catch {
+      const message = "Could not set the default address. Please try again.";
+      setError(message);
+      progress.fail(message);
+      setPendingId("");
     }
-    setPendingId("");
-    router.refresh();
   }
 
   async function remove(id: string) {
     setPendingId(id);
+    progress.begin();
     setError("");
-    const response = await fetch(`/api/addresses/${id}`, {
-      method: "DELETE",
-      credentials: "same-origin",
-    });
-    if (!response.ok) {
-      setError("Could not remove the address.");
+    try {
+      const response = await fetch(`/api/addresses/${id}`, {
+        method: "DELETE",
+        credentials: "same-origin",
+      });
+      if (!response.ok) {
+        const message = "Could not remove the address. Please try again.";
+        setError(message);
+        progress.fail(message);
+        setPendingId("");
+        return;
+      }
+      progress.succeed("Address removed.");
       setPendingId("");
-      return;
+      setRemoveId("");
+      router.refresh();
+    } catch {
+      const message = "Could not remove the address. Please try again.";
+      setError(message);
+      progress.fail(message);
+      setPendingId("");
     }
-    setPendingId("");
-    setRemoveId("");
-    router.refresh();
   }
 
   return (
@@ -91,7 +117,7 @@ export function SavedAddressList({
                   <button
                     type="button"
                     className={buttonClassName("ghost", "px-4")}
-                    disabled={Boolean(pendingId)}
+                    disabled={Boolean(pendingId) || progress.pending}
                     onClick={() => void setDefault(address.id)}
                   >
                     Set as default
@@ -100,7 +126,7 @@ export function SavedAddressList({
                 <button
                   type="button"
                   className="inline-flex min-h-11 items-center justify-center rounded-full px-4 text-sm text-muted hover:text-danger disabled:opacity-50"
-                  disabled={Boolean(pendingId)}
+                  disabled={Boolean(pendingId) || progress.pending}
                   onClick={() => setRemoveId(address.id)}
                 >
                   Remove
@@ -124,9 +150,9 @@ export function SavedAddressList({
             : "This address will be deleted from your account."
         }
         confirmLabel="Remove"
-        pending={Boolean(pendingId)}
+        pending={Boolean(pendingId) || progress.pending}
         onCancel={() => {
-          if (!pendingId) {
+          if (!pendingId && !progress.pending) {
             setRemoveId("");
           }
         }}

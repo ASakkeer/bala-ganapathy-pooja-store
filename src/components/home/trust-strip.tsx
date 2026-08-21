@@ -1,40 +1,39 @@
-import { FullBleed } from "@/components/ui/full-bleed";
-import { Container } from "@/components/ui/container";
+import { Icon } from "@/components/ui/icon";
 
 const items = [
   {
-    title: "Authentic traditional products",
-    body: "Pooja samagri, homam materials, and naattu marundhu from the R.S. Puram counter.",
+    icon: "circle-check",
+    title: "Authentic Quality",
+    body: "Sourced directly from traditional makers, ensuring the highest purity for your rituals.",
   },
   {
-    title: "Local store",
-    body: "Visit the physical shop in R.S. Puram, Coimbatore.",
+    icon: "truck",
+    title: "Fast & Secure Delivery",
+    body: "Carefully packed to preserve sanctity, delivered reliably to your doorstep.",
   },
   {
-    title: "Easy ordering",
-    body: "Shop online, then track the order with your order number and phone.",
-  },
-  {
-    title: "Secure payments",
-    body: "UPI, cards, and netbanking via Razorpay when payments are on. Card numbers are never typed here.",
+    icon: "hand-holding-heart",
+    title: "Rooted in Tradition",
+    body: "Decades of heritage serving devotees in R.S. Puram, now available online.",
   },
 ] as const;
 
 export function TrustStrip() {
   return (
-    <FullBleed className="border-y border-border/80 bg-surface">
-      <Container>
-        <section aria-label="Why shop with us" className="py-12 md:py-14">
-          <ul className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-10">
-            {items.map((item) => (
-              <li key={item.title}>
-                <p className="font-serif text-xl tracking-tight text-text">{item.title}</p>
-                <p className="mt-2 text-sm leading-relaxed text-muted">{item.body}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      </Container>
-    </FullBleed>
+    <section aria-label="Why shop with us" className="py-8 md:py-[3.75rem]">
+      <ul className="grid grid-cols-1 gap-12 text-center md:grid-cols-3">
+        {items.map((item) => (
+          <li key={item.title} className="flex flex-col items-center">
+            <div className="mb-6 flex size-16 items-center justify-center rounded-full bg-primary-container text-on-primary-container">
+              <Icon name={item.icon} className="text-[2rem]" />
+            </div>
+            <h3 className="mb-3 font-serif text-headline-sm font-semibold text-on-surface">
+              {item.title}
+            </h3>
+            <p className="max-w-sm text-base leading-relaxed text-on-surface-variant">{item.body}</p>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/components/progress/navigation";
+import { useActionProgress } from "@/components/progress/use-action-progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +34,7 @@ export function AddressForm({
   cancelHref?: string;
 }) {
   const router = useRouter();
+  const progress = useActionProgress();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [pincodeNote, setPincodeNote] = useState("");
@@ -75,6 +77,7 @@ export function AddressForm({
 
   async function submit() {
     setPending(true);
+    progress.begin();
     setError("");
 
     try {
@@ -98,19 +101,25 @@ export function AddressForm({
       }
 
       if (!response.ok) {
-        setError(payload.error ?? "Could not save the address.");
+        const message = payload.error ?? "Could not save the address. Check the details and try again.";
+        setError(message);
+        progress.fail(message);
+        setPending(false);
         return;
       }
 
       if (nextPath) {
+        progress.succeed("Address saved.", { keep: true });
         window.location.assign(nextPath);
         return;
       }
 
+      progress.succeed("Address saved.", { keep: true });
       window.location.assign("/account/addresses?saved=1");
     } catch {
-      setError("Could not save the address.");
-    } finally {
+      const message = "Could not save the address. Please try again.";
+      setError(message);
+      progress.fail(message);
       setPending(false);
     }
   }

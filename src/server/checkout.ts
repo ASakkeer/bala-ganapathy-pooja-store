@@ -29,6 +29,7 @@ import {
   ORDER_COOKIE,
   decodeOrderCookie,
   encodeOrderCookie,
+  fitOrderCookie,
   type OrderCookie,
 } from "@/lib/order-cookie";
 
@@ -177,7 +178,7 @@ export async function upsertOrderCookie(order: PlacedOrder): Promise<OrderCookie
     ...existing.filter((item) => item.publicNumber !== order.publicNumber),
   ].slice(0, MAX_STORED_ORDERS);
 
-  return { userId, orders: stored };
+  return fitOrderCookie({ userId, orders: stored });
 }
 
 export function getMemoryOrderByRazorpayOrderId(razorpayOrderId: string) {
@@ -553,12 +554,12 @@ export async function placeOrder(input: z.infer<typeof checkoutBodySchema>) {
     pincode: saved.pincode,
   };
   const number = publicNumber();
-  const userId = session && isUuid(session.userId) ? session.userId : null;
+  const dbUserId = isUuid(session.userId) ? session.userId : null;
 
   const placed: PlacedOrder = {
     id: crypto.randomUUID(),
     publicNumber: number,
-    userId,
+    userId: session.userId,
     phone,
     address,
     status: "pending_payment",
@@ -583,7 +584,7 @@ export async function placeOrder(input: z.infer<typeof checkoutBodySchema>) {
         .insert(orders)
         .values({
           publicNumber: number,
-          userId,
+          userId: dbUserId,
           phone,
           addressSnapshot: address,
           status: "pending_payment",

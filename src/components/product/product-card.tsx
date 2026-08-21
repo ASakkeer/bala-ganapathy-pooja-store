@@ -18,6 +18,7 @@ export type ProductCardProps = {
   stockQty: number;
   className?: string;
   priority?: boolean;
+  tone?: "catalog" | "home";
 };
 
 export function ProductCard({
@@ -33,12 +34,73 @@ export function ProductCard({
   stockQty,
   className,
   priority = false,
+  tone = "catalog",
 }: ProductCardProps) {
   const showMrp = typeof mrpPaise === "number" && mrpPaise > pricePaise;
   const discountPercent =
     showMrp && mrpPaise
       ? Math.round(((mrpPaise - pricePaise) / mrpPaise) * 100)
       : 0;
+  const home = tone === "home";
+
+  if (home) {
+    return (
+      <article
+        className={cn(
+          "group flex flex-col rounded-home border border-outline-variant/30 bg-surface-container-lowest p-4 transition-all duration-300 hover:border-outline-variant hover:shadow-xl",
+          className,
+        )}
+      >
+        <Link
+          href={href}
+          className="flex flex-1 flex-col focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
+        >
+          <div className="relative mb-4 aspect-square overflow-hidden rounded-lg bg-surface-container-low">
+            {imageSrc ? (
+              <Image
+                src={imageSrc}
+                alt={imageAlt}
+                fill
+                priority={priority}
+                sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                className="object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+              />
+            ) : (
+              <div className="flex size-full items-end bg-surface-container p-4" aria-hidden>
+                <span className="font-serif text-lg text-primary/40">{title}</span>
+              </div>
+            )}
+            {discountPercent >= 5 ? (
+              <span className="font-label-caps absolute top-3 left-3 z-10 rounded-full bg-primary px-2 py-1 text-[10px] text-on-primary shadow-sm">
+                {discountPercent}% OFF
+              </span>
+            ) : null}
+          </div>
+          <div className="flex flex-1 flex-col">
+            <h3 className="text-base font-semibold text-on-surface transition-colors group-hover:text-primary">
+              {title}
+            </h3>
+            {tamilName ? (
+              <p className="font-tamil mb-2 text-sm text-on-surface-variant">{tamilName}</p>
+            ) : null}
+            <div className="mt-auto mb-4 flex items-baseline gap-2 tabular-nums">
+              <span className="text-lg font-bold text-on-surface">{formatPaise(pricePaise)}</span>
+              {showMrp ? (
+                <span className="text-sm text-on-surface-variant line-through">{formatPaise(mrpPaise)}</span>
+              ) : null}
+            </div>
+          </div>
+        </Link>
+        <ProductCardCart
+          variantId={variantId}
+          stockQty={stockQty}
+          productName={title}
+          inStock={inStock}
+          tone="home"
+        />
+      </article>
+    );
+  }
 
   return (
     <article className={cn("flex flex-col", className)}>

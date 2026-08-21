@@ -25,7 +25,13 @@ export class OrderLookupError extends Error {
 }
 
 function ownsOrder(order: PlacedOrder, session: { userId: string; phone: string }) {
-  return order.phone === session.phone || (order.userId != null && order.userId === session.userId);
+  const orderPhone = normalizeIndianPhone(order.phone) ?? order.phone;
+  const addressPhone = normalizeIndianPhone(order.address.phone) ?? order.address.phone;
+  return (
+    orderPhone === session.phone ||
+    addressPhone === session.phone ||
+    (order.userId != null && order.userId === session.userId)
+  );
 }
 
 async function listDbOrdersForSession(userId: string, phone: string): Promise<PlacedOrder[]> {

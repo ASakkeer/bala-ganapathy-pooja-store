@@ -1,6 +1,7 @@
 import { cn } from "@/lib/cn";
 
-export const containerClassName = "w-full px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12";
+export const containerClassName =
+  "mx-auto w-full max-w-container-max px-4 sm:px-6 lg:px-grid-margin";
 
 export type ContainerProps = React.ComponentProps<"div">;
 

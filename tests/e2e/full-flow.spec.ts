@@ -66,10 +66,10 @@ test("home merchandising works on mobile and desktop", async ({ page }) => {
     expect(response?.ok(), `Home ${viewport.width}px returned ${response?.status()}`).toBeTruthy();
     await expect(page.locator("body")).not.toContainText("Application error");
     await expect(page.getByRole("heading", { level: 1, name: /Traditional pooja/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Shop Now" })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Shop by category" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Popular pooja items" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /Visit the store/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Shop Collection" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Shop by ritual" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Most loved products" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Authentic Quality" })).toBeVisible();
     await expect(page.getByRole("searchbox", { name: "Search products" }).first()).toBeVisible();
   }
 

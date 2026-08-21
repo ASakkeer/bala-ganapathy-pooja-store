@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { formatAccountPhone } from "@/components/account/account-ui";
+import { useRouter } from "@/components/progress/navigation";
+import { useActionProgress } from "@/components/progress/use-action-progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { loginHref } from "@/lib/login-next";
@@ -17,6 +18,7 @@ export function ProfileForm({
   phone: string;
 }) {
   const router = useRouter();
+  const progress = useActionProgress();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [values, setValues] = useState({
@@ -26,11 +28,12 @@ export function ProfileForm({
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending) {
+    if (pending || progress.pending) {
       return;
     }
 
     setPending(true);
+    progress.begin();
     setError("");
 
     try {
@@ -52,14 +55,19 @@ export function ProfileForm({
       }
 
       if (!response.ok) {
-        setError(payload.error ?? "Could not save your profile.");
+        const message = payload.error ?? "Could not save your profile. Please try again.";
+        setError(message);
+        progress.fail(message);
         setPending(false);
         return;
       }
 
+      progress.succeed("Profile saved.", { keep: true });
       window.location.assign("/account/profile?saved=1");
     } catch {
-      setError("Could not save your profile.");
+      const message = "Could not save your profile. Please try again.";
+      setError(message);
+      progress.fail(message);
       setPending(false);
     }
   }
@@ -102,13 +110,13 @@ export function ProfileForm({
         {error ? <p className="pb-3 text-sm text-danger">{error}</p> : null}
       </div>
       <div className="flex flex-col gap-3 border-t border-border/80 px-5 py-4 sm:flex-row sm:px-6">
-        <Button type="submit" disabled={pending} className="w-full sm:min-w-40 sm:w-auto">
+        <Button type="submit" disabled={pending || progress.pending} className="w-full sm:min-w-40 sm:w-auto">
           {pending ? "Saving…" : "Save"}
         </Button>
         <Button
           type="button"
           variant="ghost"
-          disabled={pending}
+          disabled={pending || progress.pending}
           className="w-full sm:w-auto"
           onClick={() => router.push("/account/profile")}
         >

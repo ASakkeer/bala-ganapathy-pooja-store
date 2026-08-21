@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { useActionProgress } from "@/components/progress/use-action-progress";
 import { safeNextPath } from "@/lib/login-next";
 
 const OTP_LENGTH = 6;
@@ -22,6 +23,7 @@ export function LoginForm({
   const [error, setError] = useState("");
   const [cooldown, setCooldown] = useState(0);
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const progress = useActionProgress();
 
   const code = digits.join("");
   const phoneReady = phone.length === 10;
@@ -42,11 +44,12 @@ export function LoginForm({
   }, [sent]);
 
   async function sendCode() {
-    if (!phoneReady || pending) {
+    if (!phoneReady || pending || progress.pending) {
       return;
     }
 
     setPending(true);
+    progress.begin();
     setError("");
 
     try {
@@ -59,26 +62,32 @@ export function LoginForm({
       const payload = (await response.json()) as { error?: string };
 
       if (!response.ok) {
-        setError(payload.error ?? "Could not send the code.");
+        const message = payload.error ?? "Could not send the code. Check the number and try again.";
+        setError(message);
+        progress.fail(message);
         return;
       }
 
       setSent(true);
       setDigits(Array(OTP_LENGTH).fill(""));
       setCooldown(RESEND_SECONDS);
+      progress.succeed("Code sent. Check your phone.");
     } catch {
-      setError("Could not send the code.");
+      const message = "Could not send the code. Please try again.";
+      setError(message);
+      progress.fail(message);
     } finally {
       setPending(false);
     }
   }
 
   async function verifyCode(value = code) {
-    if (value.length !== OTP_LENGTH || pending) {
+    if (value.length !== OTP_LENGTH || pending || progress.pending) {
       return;
     }
 
     setPending(true);
+    progress.begin();
     setError("");
 
     try {
@@ -91,20 +100,22 @@ export function LoginForm({
       const payload = (await response.json()) as { error?: string };
 
       if (!response.ok) {
-        setError(payload.error ?? "Could not verify the code.");
+        const message = payload.error ?? "That code did not match. Request a new one if needed.";
+        setError(message);
+        progress.fail(message);
         setDigits(Array(OTP_LENGTH).fill(""));
         otpRefs.current[0]?.focus();
+        setPending(false);
         return;
       }
 
+      progress.succeed("Signed in.", { keep: true });
       window.location.replace(safeNextPath(nextPath));
-      return;
     } catch {
-      setError("Could not verify the code.");
-    } finally {
-      if (document.visibilityState !== "hidden") {
-        setPending(false);
-      }
+      const message = "Could not verify the code. Please try again.";
+      setError(message);
+      progress.fail(message);
+      setPending(false);
     }
   }
 
@@ -231,7 +242,7 @@ export function LoginForm({
 
       {error ? <p className="text-sm text-danger">{error}</p> : null}
 
-      <Button type="submit" disabled={pending || (!sent && !phoneReady) || (sent && code.length !== OTP_LENGTH)} className="h-12 w-full text-base">
+      <Button type="submit" disabled={pending || progress.pending || (!sent && !phoneReady) || (sent && code.length !== OTP_LENGTH)} className="h-12 w-full text-base">
         {pending ? "Please wait…" : sent ? (
           <>
             <Icon name="circle-check" className="text-sm" />
@@ -249,7 +260,7 @@ export function LoginForm({
         <button
           type="button"
           className="text-sm text-muted hover:text-brand disabled:opacity-50"
-          disabled={pending || cooldown > 0}
+          disabled={pending || progress.pending || cooldown > 0}
           onClick={() => void sendCode()}
         >
           {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}

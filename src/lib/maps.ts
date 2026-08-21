@@ -1,6 +1,13 @@
 export const SHOP_ADDRESS =
   "193, Thiyagaraya New Street 3, Sukrawar Pettai, R.S. Puram, Coimbatore, Tamil Nadu 641001";
 
+export const SHOP_ADDRESS_LINES = [
+  "193, Thiyagaraya New Street - 3,",
+  "Sukrawar Pettai, R.S. Puram,",
+  "Coimbatore, 641001.",
+  "Tamil Nadu, India",
+] as const;
+
 export const SHOP_MAPS_SHARE_URL = "https://maps.app.goo.gl/KM7VKLQ7jRa1RCHU8";
 
 export const SHOP_PHONES = ["8903135125", "8870903941"] as const;

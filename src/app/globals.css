@@ -2,23 +2,61 @@
 @import "@fortawesome/fontawesome-free/css/all.min.css";
 
 @theme {
-  --color-brand: #7a1f2b;
-  --color-brand-hover: #5c171f;
+  --color-brand: #5b0719;
+  --color-brand-hover: #7a202d;
   --color-accent: #c4922a;
-  --color-bg: #f7f1e8;
-  --color-surface: #fffcf8;
-  --color-text: #241c18;
-  --color-muted: #7a6e64;
+  --color-bg: #fcf9f8;
+  --color-surface: #fcf9f8;
+  --color-text: #1c1b1b;
+  --color-muted: #564243;
   --color-success: #2f5d3a;
-  --color-danger: #9b1b2e;
-  --color-border: #eadfd0;
-  --color-on-brand: #fffaf4;
+  --color-danger: #ba1a1a;
+  --color-border: #dcc0c0;
+  --color-on-brand: #ffffff;
 
-  --font-sans: var(--font-plus-jakarta);
-  --font-serif: var(--font-source-serif);
+  --color-primary: #5b0719;
+  --color-primary-container: #7a202d;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #ff8c95;
+  --color-primary-fixed: #ffdada;
+  --color-primary-fixed-dim: #ffb2b6;
+  --color-surface-container: #f0eded;
+  --color-surface-container-low: #f6f3f2;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-high: #eae7e7;
+  --color-surface-container-highest: #e5e2e1;
+  --color-on-surface: #1c1b1b;
+  --color-on-surface-variant: #564243;
+  --color-outline: #897172;
+  --color-outline-variant: #dcc0c0;
+  --color-error: #ba1a1a;
+  --color-tertiary-fixed: #ffdeaa;
+
+  --font-sans: var(--font-hanken);
+  --font-serif: var(--font-libre);
+
+  --text-display-lg: 3.5rem;
+  --text-display-lg--line-height: 1.1;
+  --text-display-lg--letter-spacing: -0.02em;
+  --text-headline-lg: 2rem;
+  --text-headline-lg--line-height: 1.3;
+  --text-headline-sm: 1.5rem;
+  --text-headline-sm--line-height: 1.4;
+  --text-body-lg: 1.125rem;
+  --text-body-lg--line-height: 1.6;
+  --text-label-caps: 0.75rem;
+  --text-label-caps--line-height: 1;
+  --text-label-caps--letter-spacing: 0.1em;
+  --text-label-caps--font-weight: 600;
+
+  --spacing-container-max: 90rem;
+  --spacing-grid-margin: 3rem;
+  --spacing-grid-gutter: 1.5rem;
+  --spacing-section-gap: 7.5rem;
 
   --radius-lg: 1.25rem;
   --radius-xl: 1.75rem;
+  --radius-home: 0.5rem;
 }
 
 html {
@@ -41,11 +79,21 @@ html {
 }
 
 .font-tamil {
-  font-family: var(--font-tamil), var(--font-plus-jakarta), sans-serif;
+  font-family: var(--font-tamil), var(--font-hanken), sans-serif;
 }
 
 ::selection {
-  background: rgb(122 31 43 / 0.18);
+  background: #7a202d;
+  color: #ff8c95;
+}
+
+.font-label-caps {
+  font-family: var(--font-hanken), var(--font-sans), sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
 input[type="search"]::-webkit-search-cancel-button {

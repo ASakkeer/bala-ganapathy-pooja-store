@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTopLoader } from "nextjs-toploader";
 import type { OrderStatus, PaymentStatus } from "@/types";
 
 export function PaymentReturnSync({
@@ -17,12 +18,19 @@ export function PaymentReturnSync({
   active: boolean;
 }) {
   const started = useRef(false);
+  const loader = useTopLoader();
+  const loaderRef = useRef(loader);
+
+  useEffect(() => {
+    loaderRef.current = loader;
+  }, [loader]);
 
   useEffect(() => {
     if (!active || !payable) {
       return;
     }
 
+    loaderRef.current.start();
     let cancelled = false;
 
     async function syncOnce() {
@@ -73,6 +81,9 @@ export function PaymentReturnSync({
         }
         await new Promise((resolve) => window.setTimeout(resolve, 1500));
       }
+      if (!cancelled) {
+        loaderRef.current.done(true);
+      }
     }
 
     void poll();
@@ -86,6 +97,7 @@ export function PaymentReturnSync({
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true;
+      loaderRef.current.done(true);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [active, payable, paymentStatus, publicNumber, status]);

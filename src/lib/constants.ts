@@ -5,6 +5,9 @@ export const STORE_NAME = "Bala Ganapathy Pooja Store";
 /** Served from `public/assets/bgps-logo.png`. Query busts stale browser/optimizer cache. */
 export const STORE_LOGO_SRC = "/assets/bgps-logo.png?v=3";
 
+/** Light mark for the maroon footer only. */
+export const STORE_FOOTER_LOGO_SRC = "/assets/bgps-footer-logo.png";
+
 export const DEFAULT_CURRENCY = "INR" as const;
 
 export const PAGE_SIZE = 24;

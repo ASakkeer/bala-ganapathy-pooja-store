@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useActionProgress } from "@/components/progress/use-action-progress";
 
 export function TrackForm({
   initialNumber = "",
@@ -23,6 +24,7 @@ export function TrackForm({
   const [error, setError] = useState("");
   const [order, setOrder] = useState<TrackedOrder | null>(null);
   const resultRef = useRef<HTMLElement>(null);
+  const progress = useActionProgress();
 
   useEffect(() => {
     if (order) {
@@ -35,6 +37,7 @@ export function TrackForm({
 
   async function submit() {
     setPending(true);
+    progress.begin();
     setError("");
 
     try {
@@ -48,13 +51,18 @@ export function TrackForm({
       const payload = (await response.json()) as TrackedOrder & { error?: string };
 
       if (!response.ok) {
-        setError(payload.error ?? "We couldn’t find an order with those details.");
+        const message = payload.error ?? "We couldn’t find an order with those details.";
+        setError(message);
+        progress.fail(message);
         return;
       }
 
       setOrder(payload);
+      progress.succeed("Order found.");
     } catch {
-      setError("Could not look up the order.");
+      const message = "Could not look up the order. Please try again.";
+      setError(message);
+      progress.fail(message);
     } finally {
       setPending(false);
     }
@@ -116,7 +124,7 @@ export function TrackForm({
                 required
               />
             </div>
-            <Button type="submit" disabled={pending} className="w-full sm:w-auto sm:self-start sm:px-8">
+            <Button type="submit" disabled={pending || progress.pending} className="w-full sm:w-auto sm:self-start sm:px-8">
               {pending ? "Looking up…" : (
                 <>
                   <Icon name="magnifying-glass" className="text-sm" />

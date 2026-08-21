@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { AddressDisplay } from "@/components/account/address-display";
 import { AddressForm } from "@/components/account/address-form";
 import { useCartUi } from "@/components/cart/cart-provider";
+import { useRouter } from "@/components/progress/navigation";
+import { useActionProgress } from "@/components/progress/use-action-progress";
 import { Button } from "@/components/ui/button";
 import { loginHref } from "@/lib/login-next";
 import { formatPaise } from "@/lib/money";
@@ -36,9 +37,9 @@ export function CheckoutForm({
 }) {
   const router = useRouter();
   const { applyCount } = useCartUi();
+  const progress = useActionProgress();
   const defaultId = addresses.find((item) => item.isDefault)?.id ?? addresses[0]?.id ?? "";
   const [selectedId, setSelectedId] = useState(defaultId);
-  const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(addresses.length === 0);
 
@@ -46,7 +47,7 @@ export function CheckoutForm({
     () => addresses.find((item) => item.id === selectedId) ?? null,
     [addresses, selectedId],
   );
-  const canSubmit = Boolean(selected) && !pending;
+  const canSubmit = Boolean(selected) && !progress.pending;
 
   async function selectAddress(id: string) {
     setSelectedId(id);
@@ -62,7 +63,7 @@ export function CheckoutForm({
       return;
     }
 
-    setPending(true);
+    progress.begin();
     setError("");
 
     try {
@@ -81,17 +82,19 @@ export function CheckoutForm({
       }
 
       if (!response.ok || !payload.publicNumber) {
-        setError(payload.error ?? "Could not place the order.");
+        const message = payload.error ?? "Could not place the order. Check your address and try again.";
+        setError(message);
+        progress.fail(message);
         return;
       }
 
       applyCount(0);
+      progress.succeed("Order created. Opening payment…", { keep: true });
       window.location.assign(`/order/confirmation/${encodeURIComponent(payload.publicNumber)}`);
-      return;
     } catch {
-      setError("Could not place the order.");
-    } finally {
-      setPending(false);
+      const message = "Could not place the order. Please try again.";
+      setError(message);
+      progress.fail(message);
     }
   }
 
@@ -187,7 +190,7 @@ export function CheckoutForm({
           aria-describedby={error ? "checkout-error" : undefined}
           onClick={() => void submit()}
         >
-          {pending ? "Placing order…" : "Continue to payment"}
+          {progress.pending ? "Placing order…" : "Continue to payment"}
         </Button>
         <p className="mt-3 text-xs leading-relaxed text-muted">
           {selected

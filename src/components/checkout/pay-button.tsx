@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { useActionProgress } from "@/components/progress/use-action-progress";
 import { STORE_LOGO_SRC, STORE_NAME } from "@/lib/constants";
 
 type CheckoutPayload = {
@@ -101,6 +102,7 @@ export function PayButton({
   publicNumber: string;
   configured: boolean;
 }) {
+  const progress = useActionProgress();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const completedRef = useRef(false);
@@ -173,6 +175,7 @@ export function PayButton({
     }
 
     setPending(true);
+    progress.begin();
     setError("");
     completedRef.current = false;
 
@@ -187,15 +190,19 @@ export function PayButton({
       const createPayload = (await createResponse.json()) as CheckoutPayload & { error?: string };
 
       if (!createResponse.ok) {
-        setError(createPayload.error ?? "Could not start payment.");
+        const message = createPayload.error ?? "Could not start payment. Please try again.";
+        setError(message);
         setPending(false);
+        progress.fail(message);
         return;
       }
 
       await loadCheckoutScript();
       if (!window.Razorpay) {
-        setError("Could not load Razorpay Checkout.");
+        const message = "Could not load Razorpay Checkout. Check your connection and try again.";
+        setError(message);
         setPending(false);
+        progress.fail(message);
         return;
       }
 
@@ -214,6 +221,7 @@ export function PayButton({
         theme: { color: "#7a1f2b" },
         handler: (response: RazorpaySuccess) => {
           completedRef.current = true;
+          progress.begin();
           stopPolling();
           void fetch("/api/payments/razorpay/verify", {
             method: "POST",
@@ -246,6 +254,7 @@ export function PayButton({
             stopPolling();
             setPending(false);
             setError("Payment was cancelled. You can try again.");
+            progress.fail("Payment was cancelled. You can try again.");
           },
         },
       });
@@ -271,10 +280,13 @@ export function PayButton({
 
       startPolling();
       checkout.open();
+      progress.succeed();
     } catch {
       stopPolling();
-      setError("Could not start payment.");
+      const message = "Could not start payment. Please try again.";
+      setError(message);
       setPending(false);
+      progress.fail(message);
     }
   }
 
@@ -290,7 +302,7 @@ export function PayButton({
 
   return (
     <div className="flex flex-col gap-2">
-      <Button type="button" disabled={pending} onClick={() => void startPayment()}>
+      <Button type="button" disabled={pending || progress.pending} onClick={() => void startPayment()}>
         {pending ? "Opening payment…" : (
           <>
             <Icon name="lock" className="text-sm" />

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/components/progress/navigation";
+import { useActionProgress } from "@/components/progress/use-action-progress";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
@@ -84,6 +85,7 @@ export function ProductForm({
   const [variants, setVariants] = useState<VariantRow[]>(toVariantRows(product));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const progress = useActionProgress();
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [removeImageIndex, setRemoveImageIndex] = useState<number | null>(null);
   const [removeVariantIndex, setRemoveVariantIndex] = useState<number | null>(null);
@@ -96,25 +98,33 @@ export function ProductForm({
   }
 
   async function uploadFile(file: File, index: number) {
-    const body = new FormData();
-    body.set("file", file);
-    const response = await fetch("/api/admin/uploads", {
-      method: "POST",
-      credentials: "same-origin",
-      body,
-    });
-    const payload = (await response.json()) as { error?: string; url?: string };
-    if (!response.ok || !payload.url) {
-      throw new Error(payload.error ?? "Could not upload the image.");
+    progress.begin();
+    try {
+      const body = new FormData();
+      body.set("file", file);
+      const response = await fetch("/api/admin/uploads", {
+        method: "POST",
+        credentials: "same-origin",
+        body,
+      });
+      const payload = (await response.json()) as { error?: string; url?: string };
+      if (!response.ok || !payload.url) {
+        throw new Error(payload.error ?? "Could not upload the image.");
+      }
+      setImages((current) =>
+        current.map((row, rowIndex) => (rowIndex === index ? { ...row, src: payload.url! } : row)),
+      );
+      progress.succeed("Image uploaded.");
+    } catch (uploadError) {
+      progress.fail(uploadError instanceof Error ? uploadError.message : "Upload failed. Please try again.");
+      throw uploadError;
     }
-    setImages((current) =>
-      current.map((row, rowIndex) => (rowIndex === index ? { ...row, src: payload.url! } : row)),
-    );
   }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setPending(true);
+    progress.begin();
     setError("");
 
     try {
@@ -175,18 +185,22 @@ export function ProductForm({
       }
       router.push("/admin/products");
       router.refresh();
+      progress.succeed("Product saved.", { keep: true });
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Could not save the product.");
+      const message = saveError instanceof Error ? saveError.message : "Could not save the product. Please try again.";
+      setError(message);
+      progress.fail(message);
     } finally {
       setPending(false);
     }
   }
 
   async function archive() {
-    if (!product || pending) {
+    if (!product || pending || progress.pending) {
       return;
     }
     setPending(true);
+    progress.begin();
     setError("");
     try {
       const response = await fetch(`/api/admin/products/${product.id}`, {
@@ -197,10 +211,13 @@ export function ProductForm({
       if (!response.ok) {
         throw new Error(result.error ?? "Could not archive the product.");
       }
+      progress.succeed("Product archived.", { keep: true });
       router.push("/admin/products");
       router.refresh();
     } catch (archiveError) {
-      setError(archiveError instanceof Error ? archiveError.message : "Could not archive.");
+      const message = archiveError instanceof Error ? archiveError.message : "Could not archive. Please try again.";
+      setError(message);
+      progress.fail(message);
       setPending(false);
     }
   }
@@ -507,11 +524,11 @@ export function ProductForm({
       {error ? <p className="text-sm text-danger">{error}</p> : null}
 
       <div className="flex flex-wrap gap-3">
-        <Button type="submit" disabled={pending}>
-          {pending ? "Saving…" : "Save product"}
+        <Button type="submit" disabled={pending || progress.pending}>
+          {pending || progress.pending ? "Saving…" : "Save product"}
         </Button>
         {product ? (
-          <Button type="button" variant="secondary" disabled={pending} onClick={() => setArchiveOpen(true)}>
+          <Button type="button" variant="secondary" disabled={pending || progress.pending} onClick={() => setArchiveOpen(true)}>
             Archive
           </Button>
         ) : null}
@@ -521,9 +538,9 @@ export function ProductForm({
         title="Archive this product?"
         description={`${product?.name ?? "This product"} will leave the shop until you restore it. Orders already placed are not changed.`}
         confirmLabel="Archive"
-        pending={pending}
+        pending={pending || progress.pending}
         onCancel={() => {
-          if (!pending) {
+          if (!pending && !progress.pending) {
             setArchiveOpen(false);
           }
         }}

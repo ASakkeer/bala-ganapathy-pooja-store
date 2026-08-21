@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useCartUi, snapshotFromPayload, type CartMutationPayload } from "@/components/cart/cart-provider";
+import { useRouter } from "@/components/progress/navigation";
+import { useActionProgress } from "@/components/progress/use-action-progress";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { loginHref } from "@/lib/login-next";
@@ -21,13 +23,14 @@ export function AddToCartButton({
   qty: number;
   disabled?: boolean;
   label?: string;
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "surface";
   redirectTo?: string;
   className?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const { applySnapshot, signedIn } = useCartUi();
+  const progress = useActionProgress();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
 
@@ -37,16 +40,18 @@ export function AddToCartButton({
   }
 
   async function onAdd() {
-    if (disabled || pending) {
+    if (disabled || pending || progress.pending) {
       return;
     }
 
     if (!signedIn) {
+      progress.begin();
       goToLogin();
       return;
     }
 
     setPending(true);
+    progress.begin();
     setError("");
 
     try {
@@ -65,18 +70,25 @@ export function AddToCartButton({
       }
 
       if (!response.ok) {
-        setError(payload.error ?? "Could not add to cart.");
+        const message = payload.error ?? "Could not add to cart. Please try again.";
+        setError(message);
+        progress.fail(message);
         return;
       }
 
       applySnapshot(snapshotFromPayload(payload, qty), "Added to cart");
+      progress.succeed();
       router.refresh();
 
       if (redirectTo) {
+        progress.begin();
         router.push(redirectTo);
+        return;
       }
     } catch {
-      setError("Could not add to cart.");
+      const message = "Could not add to cart. Please try again.";
+      setError(message);
+      progress.fail(message);
     } finally {
       setPending(false);
     }
@@ -84,7 +96,7 @@ export function AddToCartButton({
 
   return (
     <div className="flex w-full flex-col gap-2">
-      <Button type="button" variant={variant} disabled={disabled || pending} onClick={onAdd} className={className ?? "w-full"}>
+      <Button type="button" variant={variant} disabled={disabled || pending || progress.pending} onClick={onAdd} className={className ?? "w-full"}>
         {pending ? "Adding…" : (
           <>
             <Icon name="bag-shopping" className="text-sm" />

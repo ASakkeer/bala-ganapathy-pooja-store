@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/components/progress/navigation";
+import { useActionProgress } from "@/components/progress/use-action-progress";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,7 @@ export function SettingsForm({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [removePin, setRemovePin] = useState("");
+  const progress = useActionProgress();
 
   async function saveSettings(event: React.FormEvent) {
     event.preventDefault();
@@ -58,11 +60,14 @@ export function SettingsForm({
     setNotice("");
     const flatShippingPaise = rupeesToPaise(shippingRupees);
     if (flatShippingPaise == null) {
-      setError("Enter shipping as rupees, for example 50.00.");
+      const message = "Enter shipping as rupees, for example 50.00.";
+      setError(message);
+      progress.fail(message);
       setPending(false);
       return;
     }
 
+    progress.begin();
     try {
       const response = await fetch("/api/admin/settings", {
         method: "PATCH",
@@ -84,9 +89,12 @@ export function SettingsForm({
         throw new Error(payload.error ?? "Could not save settings.");
       }
       setNotice("Settings saved.");
+      progress.succeed("Settings saved.");
       router.refresh();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Could not save settings.");
+      const message = saveError instanceof Error ? saveError.message : "Could not save settings. Please try again.";
+      setError(message);
+      progress.fail(message);
     } finally {
       setPending(false);
     }
@@ -95,6 +103,7 @@ export function SettingsForm({
   async function addPincode(event: React.FormEvent) {
     event.preventDefault();
     setPending(true);
+    progress.begin();
     setError("");
     try {
       const response = await fetch("/api/admin/pincodes", {
@@ -112,9 +121,12 @@ export function SettingsForm({
       }
       setNewPin("");
       setDays("");
+      progress.succeed("Pincode added.");
       router.refresh();
     } catch (addError) {
-      setError(addError instanceof Error ? addError.message : "Could not add pincode.");
+      const message = addError instanceof Error ? addError.message : "Could not add pincode. Please try again.";
+      setError(message);
+      progress.fail(message);
     } finally {
       setPending(false);
     }
@@ -122,6 +134,7 @@ export function SettingsForm({
 
   async function removePincode(pincode: string) {
     setPending(true);
+    progress.begin();
     setError("");
     try {
       const response = await fetch(`/api/admin/pincodes?pincode=${pincode}`, {
@@ -133,9 +146,12 @@ export function SettingsForm({
         throw new Error(payload.error ?? "Could not remove pincode.");
       }
       setRemovePin("");
+      progress.succeed("Pincode removed.");
       router.refresh();
     } catch (removeError) {
-      setError(removeError instanceof Error ? removeError.message : "Could not remove pincode.");
+      const message = removeError instanceof Error ? removeError.message : "Could not remove pincode. Please try again.";
+      setError(message);
+      progress.fail(message);
     } finally {
       setPending(false);
     }
@@ -193,7 +209,7 @@ export function SettingsForm({
         </div>
         {error ? <p className="text-sm text-danger">{error}</p> : null}
         {notice ? <p className="text-sm text-success">{notice}</p> : null}
-        <Button type="submit" disabled={pending} className="w-fit">
+        <Button type="submit" disabled={pending || progress.pending} className="w-fit">
           {pending ? "Saving…" : "Save settings"}
         </Button>
       </form>
@@ -210,7 +226,7 @@ export function SettingsForm({
               <button
                 type="button"
                 className="text-danger"
-                disabled={pending}
+                disabled={pending || progress.pending}
                 onClick={() => setRemovePin(row.pincode)}
               >
                 Remove
@@ -233,7 +249,7 @@ export function SettingsForm({
             placeholder="Days"
             className="max-w-[6rem]"
           />
-          <Button type="submit" variant="secondary" disabled={pending}>
+          <Button type="submit" variant="secondary" disabled={pending || progress.pending}>
             Add pin
           </Button>
         </form>
@@ -247,9 +263,9 @@ export function SettingsForm({
             : "This pincode will no longer be treated as a delivery area."
         }
         confirmLabel="Remove"
-        pending={pending}
+        pending={pending || progress.pending}
         onCancel={() => {
-          if (!pending) {
+          if (!pending && !progress.pending) {
             setRemovePin("");
           }
         }}
