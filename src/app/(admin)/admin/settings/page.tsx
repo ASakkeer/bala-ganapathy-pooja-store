@@ -7,11 +7,10 @@ export default async function AdminSettingsPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <p className="text-xs tracking-[0.18em] uppercase text-muted">Store</p>
+        <p className="text-[0.65rem] font-medium tracking-[0.16em] uppercase text-muted">Store</p>
         <h1 className="mt-3 font-serif text-4xl font-medium tracking-tight">Settings</h1>
         <p className="mt-3 max-w-xl text-muted">
-          Leave a field empty rather than inventing an address or phone. WhatsApp and map appear on
-          the storefront only when saved here.
+          Contact, announcement, shipping, and delivery pins. Leave a field empty rather than inventing a value.
         </p>
       </div>
       <SettingsForm settings={settings} pincodes={pincodes} />
