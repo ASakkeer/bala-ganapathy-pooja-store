@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { EmptyNotice } from "@/components/ui/empty-notice";
 import { formatPaise } from "@/lib/money";
 import { orderStatusLabel } from "@/lib/order-status";
 import { listAdminOrders } from "@/server/admin/orders";
@@ -28,7 +29,18 @@ export default async function AdminOrdersPage() {
             </tr>
           </thead>
           <tbody>
-            {orders.map((order) => (
+            {orders.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="p-0">
+                  <EmptyNotice
+                    title="No records"
+                    description="No orders have been placed yet."
+                    className="min-h-[12rem] py-10"
+                  />
+                </td>
+              </tr>
+            ) : (
+              orders.map((order) => (
               <tr key={order.publicNumber} className="border-b border-border/60 last:border-0">
                 <td className="px-4 py-4 font-medium">{order.publicNumber}</td>
                 <td className="px-4 py-4 text-muted">{order.phone}</td>
@@ -43,12 +55,10 @@ export default async function AdminOrdersPage() {
                   </Link>
                 </td>
               </tr>
-            ))}
+            ))
+            )}
           </tbody>
         </table>
-        {orders.length === 0 ? (
-          <p className="px-4 py-8 text-sm text-muted">No orders yet.</p>
-        ) : null}
       </div>
     </div>
   );

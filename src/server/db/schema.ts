@@ -11,6 +11,7 @@ import {
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
+import type { HomeContent } from "@/content/home-content";
 
 export const userRoleEnum = pgEnum("user_role", ["customer", "admin"]);
 export const productStatusEnum = pgEnum("product_status", [
@@ -201,6 +202,8 @@ export const storeSettings = pgTable("store_settings", {
   hours: text("hours"),
   mapUrl: text("map_url"),
   announcement: text("announcement"),
+  heroImage: text("hero_image"),
+  homeContent: jsonb("home_content").$type<HomeContent>(),
   shippingRules: jsonb("shipping_rules").$type<{
     flatShippingPaise: number;
     label: string;

@@ -5,6 +5,7 @@ import { useRouter } from "@/components/progress/navigation";
 import { useActionProgress } from "@/components/progress/use-action-progress";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { EmptyNotice } from "@/components/ui/empty-notice";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { paiseToRupeeInput, rupeesToPaise } from "@/lib/paise-parse";
@@ -216,9 +217,18 @@ export function SettingsForm({
 
       <section>
         <h2 className="font-serif text-2xl">Serviceable pincodes</h2>
-        <ul className="mt-4 divide-y divide-border/80">
-          {pincodes.map((row) => (
-            <li key={row.pincode} className="flex min-h-11 items-center justify-between py-2 text-sm">
+        <ul className="mt-4 divide-y divide-border/80 rounded-2xl bg-surface ring-1 ring-border/80">
+          {pincodes.length === 0 ? (
+            <li>
+              <EmptyNotice
+                title="No records"
+                description="No serviceable pincodes saved yet."
+                className="min-h-[8rem] py-8"
+              />
+            </li>
+          ) : (
+            pincodes.map((row) => (
+            <li key={row.pincode} className="flex min-h-11 items-center justify-between px-4 py-2 text-sm">
               <span>
                 {row.pincode}
                 {row.estimatedDays ? ` · ${row.estimatedDays} days` : ""}
@@ -232,7 +242,8 @@ export function SettingsForm({
                 Remove
               </button>
             </li>
-          ))}
+          ))
+          )}
         </ul>
         <form onSubmit={(event) => void addPincode(event)} className="mt-4 flex flex-wrap gap-3">
           <Input

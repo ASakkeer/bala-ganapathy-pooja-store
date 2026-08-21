@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
 import { Icon } from "@/components/ui/icon";
-import { CATEGORIES } from "@/lib/constants";
+import type { NavCategory } from "@/components/layout/header-category-nav";
 
-export function MobileNav() {
+export function MobileNav({ categories = [] }: { categories?: NavCategory[] }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const pathname = usePathname();
@@ -59,7 +59,7 @@ export function MobileNav() {
             className="absolute inset-x-0 top-full z-40 max-h-[calc(100dvh-8rem)] overflow-y-auto border-b border-outline-variant bg-surface"
           >
             <nav aria-label="Product categories" className="flex flex-col px-4 py-6 sm:px-6">
-              {CATEGORIES.map((category) => (
+              {categories.map((category) => (
                 <Link
                   key={category.slug}
                   href={`/c/${category.slug}`}

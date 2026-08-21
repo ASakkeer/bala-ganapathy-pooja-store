@@ -3,6 +3,7 @@
  * Product copy, prices, and photos live in src/content/catalog.ts.
  */
 import { CATEGORIES, CATALOG_PRODUCTS } from "@/content/catalog";
+import type { HomeContent } from "@/content/home-content";
 import { SHOP_ADDRESS, SHOP_MAPS_SHARE_URL, SHOP_PHONES } from "@/lib/maps";
 
 const createdAt = new Date("2026-08-01T06:00:00.000Z");
@@ -30,6 +31,8 @@ export const MOCK_STORE_SETTINGS: {
   hours: string | null;
   mapUrl: string | null;
   announcement: string | null;
+  heroImage: string | null;
+  homeContent: HomeContent | null;
   shippingRules: {
     flatShippingPaise: number;
     label: string;
@@ -43,6 +46,8 @@ export const MOCK_STORE_SETTINGS: {
   hours: null,
   mapUrl: SHOP_MAPS_SHARE_URL,
   announcement: null,
+  heroImage: null,
+  homeContent: null,
   shippingRules: {
     flatShippingPaise: 5000,
     label: "Shipping ₹50 — confirmed at checkout",

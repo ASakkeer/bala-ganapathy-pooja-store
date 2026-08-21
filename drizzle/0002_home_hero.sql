@@ -1,0 +1,1 @@
+ALTER TABLE "store_settings" ADD COLUMN "hero_image" text;

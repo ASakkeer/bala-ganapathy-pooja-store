@@ -8,6 +8,7 @@ import { ANNOUNCEMENT_MESSAGE } from "@/lib/constants";
 import { getCart } from "@/server/cart";
 import { getSession } from "@/server/auth";
 import { getStoreSettings } from "@/server/queries/store";
+import { listCategories } from "@/server/queries/products";
 
 export const dynamic = "force-dynamic";
 
@@ -16,12 +17,17 @@ export default async function StorefrontLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [settings, cart, session] = await Promise.all([
+  const [settings, cart, session, categories] = await Promise.all([
     getStoreSettings(),
     getCart(),
     getSession(),
+    listCategories(),
   ]);
   const announcement = settings?.announcement?.trim() || ANNOUNCEMENT_MESSAGE;
+  const navCategories = categories.map((category) => ({
+    slug: category.slug,
+    name: category.name,
+  }));
 
   return (
     <CartProvider
@@ -47,6 +53,7 @@ export default async function StorefrontLayout({
             isAdmin={session?.role === "admin"}
             phones={settings?.phones}
             whatsapp={settings?.whatsapp}
+            categories={navCategories}
           />
         </div>
         <main id="main-content" className="flex flex-1 flex-col overflow-x-clip">
@@ -58,6 +65,7 @@ export default async function StorefrontLayout({
           phones={settings?.phones}
           whatsapp={settings?.whatsapp}
           mapUrl={settings?.mapUrl}
+          categories={navCategories}
         />
         <MiniCartOverlay />
       </div>

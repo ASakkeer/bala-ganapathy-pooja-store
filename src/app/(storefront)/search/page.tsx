@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/catalog/breadcrumbs";
 import { ProductGrid } from "@/components/catalog/product-grid";
-import { SearchEmpty } from "@/components/catalog/search-empty";
 import { SearchPagination } from "@/components/catalog/search-pagination";
 import { toProductCardProps } from "@/components/home/map-product";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { STORE_NAME } from "@/lib/constants";
 import { parseSearchQuery } from "@/lib/search";
 import { searchProducts } from "@/server/queries/products";
-import { getStoreSettings } from "@/server/queries/store";
 
 export const dynamic = "force-dynamic";
 
@@ -32,10 +30,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const query = parseSearchQuery(params.q);
   const parsedPage = Number(params.page);
   const page = Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
-  const [result, settings] = await Promise.all([
-    searchProducts(query, { page }),
-    getStoreSettings(),
-  ]);
+  const result = await searchProducts(query, { page });
   const products = result.items.map(toProductCardProps).filter((card) => card !== null);
 
   return (
@@ -55,27 +50,23 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             : "Search by English or Tamil names — karpooram, camphor, kungumam, vilakku."
         }
       />
-      {!query || products.length === 0 ? (
-        <SearchEmpty
-          title={query ? `No matches for “${query}”` : "Type a product name"}
-          description={
-            query
-              ? "Try another spelling, a Tamil name, or browse a category."
-              : "Try karpooram, camphor, kumkum, agarbatti, or vilakku."
-          }
-          whatsapp={settings?.whatsapp}
+      <ProductGrid
+        products={products}
+        emptyTitle={query ? `No records for “${query}”` : "No records"}
+        emptyDescription={
+          query
+            ? "Try another spelling, a Tamil name, or browse a category."
+            : "Type a product name to search the catalog."
+        }
+      />
+      {products.length > 0 ? (
+        <SearchPagination
+          query={query}
+          page={result.page}
+          pageSize={result.pageSize}
+          total={result.total}
         />
-      ) : (
-        <>
-          <ProductGrid products={products} />
-          <SearchPagination
-            query={query}
-            page={result.page}
-            pageSize={result.pageSize}
-            total={result.total}
-          />
-        </>
-      )}
+      ) : null}
     </div>
   );
 }

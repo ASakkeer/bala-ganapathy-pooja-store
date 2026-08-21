@@ -5,7 +5,7 @@ import { AddressForm } from "@/components/account/address-form";
 import { AccountPanel } from "@/components/account/account-panel";
 import { AccountShell } from "@/components/account/account-shell";
 import { SavedAddressList } from "@/components/account/saved-address-list";
-import { buttonClassName } from "@/components/ui/button";
+import { EmptyNotice } from "@/components/ui/empty-notice";
 import { MAX_SAVED_ADDRESSES } from "@/lib/addresses";
 import { STORE_NAME } from "@/lib/constants";
 import { loginHref, safeNextPath } from "@/lib/login-next";
@@ -123,17 +123,11 @@ export default async function AccountAddressesPage({
           }
         >
           {addresses.length === 0 ? (
-            <div className="px-5 py-8 sm:px-6">
-              <p className="text-sm leading-relaxed text-muted">
-                No saved addresses yet. Add one here or at checkout.
-              </p>
-              <Link
-                href={addressesPath({ next: nextPath, add: true })}
-                className={`${buttonClassName("primary")} mt-5 w-full sm:w-auto`}
-              >
-                Add an address
-              </Link>
-            </div>
+            <EmptyNotice
+              title="No records"
+              description="No saved addresses yet. Add one here or at checkout."
+              className="min-h-[12rem] px-5 py-10 sm:px-6"
+            />
           ) : (
             <SavedAddressList addresses={addresses} nextPath={nextPath} />
           )}

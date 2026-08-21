@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/catalog/breadcrumbs";
 import { buttonClassName } from "@/components/ui/button";
-import { CATEGORIES, STORE_NAME } from "@/lib/constants";
+import { EmptyNotice } from "@/components/ui/empty-notice";
+import { STORE_NAME } from "@/lib/constants";
 import { pageMetadata } from "@/lib/site";
+import { listCategories } from "@/server/queries/products";
 
 export const metadata = pageMetadata({
   title: `About | ${STORE_NAME}`,
@@ -10,7 +12,11 @@ export const metadata = pageMetadata({
   path: "/about",
 });
 
-export default function AboutPage() {
+export const dynamic = "force-dynamic";
+
+export default async function AboutPage() {
+  const categories = await listCategories();
+
   return (
     <div className="flex flex-col gap-10 py-10 md:py-14">
       <div>
@@ -34,22 +40,30 @@ export default function AboutPage() {
         <p className="mt-3 text-base leading-relaxed text-muted">
           We sell pooja and homam materials from the shop at Thiyagaraya New Street 3. We do not
           invent a founding year or medical claims. Naattu marundhu listings are traditional herbal
-          products, not medicines. Empty categories stay hidden on the homepage until they have
-          stock.
+          products, not medicines.
         </p>
-        <ul className="mt-6 grid gap-2 sm:grid-cols-2">
-          {CATEGORIES.map((category) => (
-            <li key={category.slug}>
-              <Link
-                href={`/c/${category.slug}`}
-                className="inline-flex min-h-11 items-center text-sm text-brand hover:underline"
-              >
-                {category.name}
-                <span className="font-tamil ml-2 text-muted">{category.nameTa}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        {categories.length === 0 ? (
+          <div className="mt-6 rounded-home border border-outline-variant/30 bg-surface-container-lowest">
+            <EmptyNotice
+              title="No records"
+              description="Categories will appear here after they are added in admin."
+              className="min-h-[10rem] py-8"
+            />
+          </div>
+        ) : (
+          <ul className="mt-6 grid gap-2 sm:grid-cols-2">
+            {categories.map((category) => (
+              <li key={category.slug}>
+                <Link
+                  href={`/c/${category.slug}`}
+                  className="inline-flex min-h-11 items-center text-sm text-brand hover:underline"
+                >
+                  {category.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="max-w-2xl">

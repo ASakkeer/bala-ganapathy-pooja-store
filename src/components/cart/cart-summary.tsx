@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { buttonClassName } from "@/components/ui/button";
+import { EmptyNotice } from "@/components/ui/empty-notice";
 import { Icon } from "@/components/ui/icon";
 import { formatPaise } from "@/lib/money";
 import type { CartLine } from "@/server/cart";
@@ -32,20 +33,30 @@ export function CartSummary({
         </header>
 
         <ul className="px-5 sm:px-6">
-          {items.map((item) => (
-            <li
-              key={item.variantId}
-              className="flex items-start justify-between gap-4 border-b border-border/70 py-3 last:border-b-0"
-            >
-              <span className="min-w-0 text-sm leading-snug text-text">
-                {item.productName}
-                <span className="mt-0.5 block text-muted">
-                  {item.variantName} × {item.qty}
-                </span>
-              </span>
-              <span className="shrink-0 text-sm tabular-nums text-text">{formatPaise(item.linePaise)}</span>
+          {items.length === 0 ? (
+            <li>
+              <EmptyNotice
+                title="No records"
+                description="No items in this order summary yet."
+                className="min-h-[7rem] px-0 py-6"
+              />
             </li>
-          ))}
+          ) : (
+            items.map((item) => (
+              <li
+                key={item.variantId}
+                className="flex items-start justify-between gap-4 border-b border-border/70 py-3 last:border-b-0"
+              >
+                <span className="min-w-0 text-sm leading-snug text-text">
+                  {item.productName}
+                  <span className="mt-0.5 block text-muted">
+                    {item.variantName} × {item.qty}
+                  </span>
+                </span>
+                <span className="shrink-0 text-sm tabular-nums text-text">{formatPaise(item.linePaise)}</span>
+              </li>
+            ))
+          )}
         </ul>
 
         <dl className="space-y-3 border-t border-border/80 px-5 py-4 text-sm sm:px-6">
@@ -68,28 +79,32 @@ export function CartSummary({
         </dl>
 
         <div className="flex flex-col gap-2 p-5 sm:p-6">
-          <Link href="/checkout" className={buttonClassName("primary", "hidden w-full lg:inline-flex")}>
-            <Icon name="lock" className="text-sm" />
-            Checkout
-          </Link>
+          {itemCount > 0 ? (
+            <Link href="/checkout" className={buttonClassName("primary", "hidden w-full lg:inline-flex")}>
+              <Icon name="lock" className="text-sm" />
+              Checkout
+            </Link>
+          ) : null}
           <Link href="/shop" className={buttonClassName("ghost", "w-full")}>
             Continue shopping
           </Link>
         </div>
       </aside>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-surface/95 px-4 py-3 backdrop-blur-xl lg:hidden">
-        <div className="mx-auto flex max-w-6xl items-center gap-4">
-          <div className="min-w-0">
-            <p className="text-xs text-muted">{countLabel}</p>
-            <p className="font-serif text-xl tabular-nums">{formatPaise(grandTotalPaise)}</p>
+      {itemCount > 0 ? (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/80 bg-surface/95 px-4 py-3 backdrop-blur-xl lg:hidden">
+          <div className="mx-auto flex max-w-6xl items-center gap-4">
+            <div className="min-w-0">
+              <p className="text-xs text-muted">{countLabel}</p>
+              <p className="font-serif text-xl tabular-nums">{formatPaise(grandTotalPaise)}</p>
+            </div>
+            <Link href="/checkout" className={buttonClassName("primary", "ml-auto min-w-[9.5rem]")}>
+              <Icon name="lock" className="text-sm" />
+              Checkout
+            </Link>
           </div>
-          <Link href="/checkout" className={buttonClassName("primary", "ml-auto min-w-[9.5rem]")}>
-            <Icon name="lock" className="text-sm" />
-            Checkout
-          </Link>
         </div>
-      </div>
+      ) : null}
     </>
   );
 }

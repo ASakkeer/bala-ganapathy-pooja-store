@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { StoreLogo } from "@/components/brand/store-logo";
 import { CartCountBadge } from "@/components/cart/cart-count-badge";
-import { HeaderCategoryNav } from "@/components/layout/header-category-nav";
+import { HeaderCategoryNav, type NavCategory } from "@/components/layout/header-category-nav";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { SearchField, SearchForm } from "@/components/layout/search-field";
 import { Container } from "@/components/ui/container";
@@ -18,11 +18,13 @@ export function Header({
   signedIn = false,
   isAdmin = false,
   whatsapp,
+  categories = [],
 }: {
   signedIn?: boolean;
   isAdmin?: boolean;
   phones?: string[] | null;
   whatsapp?: string | null;
+  categories?: NavCategory[];
 }) {
   const chatHref = whatsappHref(whatsapp);
 
@@ -31,7 +33,7 @@ export function Header({
       <Container className="flex flex-col py-4">
         <div className="flex items-center justify-between gap-grid-gutter pb-4">
           <div className="flex min-w-0 items-center gap-2">
-            <MobileNav />
+            <MobileNav categories={categories} />
             <Link
               href="/"
               aria-label={STORE_NAME}
@@ -79,7 +81,7 @@ export function Header({
         <Suspense fallback={<SearchForm id="site-search-mobile" tone="bar" className="pb-3 md:hidden" />}>
           <SearchField id="site-search-mobile" tone="bar" className="pb-3 md:hidden" />
         </Suspense>
-        <HeaderCategoryNav />
+        <HeaderCategoryNav categories={categories} />
       </Container>
     </header>
   );

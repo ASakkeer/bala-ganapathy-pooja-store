@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { AdminError } from "@/server/admin/catalog";
 import { revalidatePincodes, revalidateStore } from "@/server/admin/revalidate";
+import { resolveHomeContent, type HomeContent } from "@/content/home-content";
 import { getDb } from "@/server/db";
 import { serviceablePincodes, storeSettings } from "@/server/db/schema";
 import { isDatabaseConfigured } from "@/server/env";
@@ -46,6 +47,8 @@ export async function getAdminSettings() {
     hours: current?.hours ?? null,
     mapUrl: current?.mapUrl ?? null,
     announcement: current?.announcement ?? null,
+    heroImage: current?.heroImage ?? null,
+    homeContent: resolveHomeContent(current?.homeContent ?? null),
     shippingRules: current?.shippingRules ?? mockGetSettings().shippingRules,
   };
 }
@@ -88,6 +91,138 @@ export async function saveAdminSettings(body: z.infer<typeof settingsBodySchema>
   return next;
 }
 
+export async function saveAdminHeroImage(heroImage: string | null) {
+  const next = emptyToNull(heroImage);
+
+  if (!isDatabaseConfigured()) {
+    const current = mockGetSettings();
+    current.heroImage = next;
+    revalidateStore();
+    return next;
+  }
+
+  try {
+    const db = getDb();
+    const [existing] = await db.select().from(storeSettings).limit(1);
+    if (existing) {
+      await db
+        .update(storeSettings)
+        .set({ heroImage: next, updatedAt: new Date() })
+        .where(eq(storeSettings.id, existing.id));
+    } else {
+      await db.insert(storeSettings).values({ heroImage: next });
+    }
+  } catch (error) {
+    console.error("[admin] save hero image failed", error);
+    throw new AdminError("Could not save the home banner.", 500);
+  }
+
+  revalidateStore();
+  return next;
+}
+
+const tileCopySchema = z.object({
+  title: z.string().max(80),
+  subtitle: z.string().max(160),
+});
+
+export const homeContentBodySchema = z.object({
+  heroEyebrow: z.string().max(80),
+  heroTitle: z.string().max(120),
+  heroSubtitle: z.string().max(240),
+  heroCta: z.string().max(80),
+  ritualEyebrow: z.string().max(80),
+  ritualTitle: z.string().max(120),
+  ritualCta: z.string().max(80),
+  ritualTiles: z.object({
+    "ganapathy-homam": tileCopySchema,
+    "navagraha-homam": tileCopySchema,
+    kumbabishekam: tileCopySchema,
+    "pooja-essentials": tileCopySchema,
+    "naattu-marundhu": tileCopySchema,
+  }),
+  popularEyebrow: z.string().max(80),
+  popularTitle: z.string().max(120),
+  popularBody: z.string().max(400),
+  popularCta: z.string().max(80),
+  trust: z
+    .array(
+      z.object({
+        title: z.string().max(80),
+        body: z.string().max(280),
+      }),
+    )
+    .length(3),
+});
+
+export async function saveAdminHomeContent(body: z.infer<typeof homeContentBodySchema>) {
+  const next: HomeContent = {
+    heroEyebrow: body.heroEyebrow.trim(),
+    heroTitle: body.heroTitle.trim(),
+    heroSubtitle: body.heroSubtitle.trim(),
+    heroCta: body.heroCta.trim(),
+    ritualEyebrow: body.ritualEyebrow.trim(),
+    ritualTitle: body.ritualTitle.trim(),
+    ritualCta: body.ritualCta.trim(),
+    ritualTiles: {
+      "ganapathy-homam": {
+        title: body.ritualTiles["ganapathy-homam"].title.trim(),
+        subtitle: body.ritualTiles["ganapathy-homam"].subtitle.trim(),
+      },
+      "navagraha-homam": {
+        title: body.ritualTiles["navagraha-homam"].title.trim(),
+        subtitle: body.ritualTiles["navagraha-homam"].subtitle.trim(),
+      },
+      kumbabishekam: {
+        title: body.ritualTiles.kumbabishekam.title.trim(),
+        subtitle: body.ritualTiles.kumbabishekam.subtitle.trim(),
+      },
+      "pooja-essentials": {
+        title: body.ritualTiles["pooja-essentials"].title.trim(),
+        subtitle: body.ritualTiles["pooja-essentials"].subtitle.trim(),
+      },
+      "naattu-marundhu": {
+        title: body.ritualTiles["naattu-marundhu"].title.trim(),
+        subtitle: body.ritualTiles["naattu-marundhu"].subtitle.trim(),
+      },
+    },
+    popularEyebrow: body.popularEyebrow.trim(),
+    popularTitle: body.popularTitle.trim(),
+    popularBody: body.popularBody.trim(),
+    popularCta: body.popularCta.trim(),
+    trust: [
+      { title: body.trust[0]?.title.trim() ?? "", body: body.trust[0]?.body.trim() ?? "" },
+      { title: body.trust[1]?.title.trim() ?? "", body: body.trust[1]?.body.trim() ?? "" },
+      { title: body.trust[2]?.title.trim() ?? "", body: body.trust[2]?.body.trim() ?? "" },
+    ],
+  };
+
+  if (!isDatabaseConfigured()) {
+    mockGetSettings().homeContent = next;
+    revalidateStore();
+    return next;
+  }
+
+  try {
+    const db = getDb();
+    const [existing] = await db.select().from(storeSettings).limit(1);
+    if (existing) {
+      await db
+        .update(storeSettings)
+        .set({ homeContent: next, updatedAt: new Date() })
+        .where(eq(storeSettings.id, existing.id));
+    } else {
+      await db.insert(storeSettings).values({ homeContent: next });
+    }
+  } catch (error) {
+    console.error("[admin] save home content failed", error);
+    throw new AdminError("Could not save the home page text.", 500);
+  }
+
+  revalidateStore();
+  return next;
+}
+
 export async function listAdminPincodes() {
   if (!isDatabaseConfigured()) {
     return mockListPincodes();
@@ -96,8 +231,9 @@ export async function listAdminPincodes() {
   try {
     const db = getDb();
     return db.select().from(serviceablePincodes);
-  } catch {
-    return mockListPincodes();
+  } catch (error) {
+    console.error("[admin] list pincodes failed", error);
+    return [];
   }
 }
 

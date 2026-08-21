@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { ProductCard, type ProductCardProps } from "@/components/product/product-card";
+import { ProductCardSkeletonGrid } from "@/components/product/product-card-skeleton";
 import { FullBleed } from "@/components/ui/full-bleed";
 import { Container } from "@/components/ui/container";
+import { EmptyNotice } from "@/components/ui/empty-notice";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
 
@@ -22,10 +24,6 @@ export function ProductRail({
   products: ProductCardProps[];
   layout?: "grid" | "showcase" | "home";
 }) {
-  if (products.length === 0) {
-    return null;
-  }
-
   const home = layout === "home";
   const showcase = layout === "showcase";
 
@@ -74,21 +72,34 @@ export function ProductRail({
     </div>
   );
 
-  const grid = (
-    <div
-      className={cn(
-        home
-          ? "grid grid-cols-1 gap-grid-gutter sm:grid-cols-2 lg:grid-cols-4"
-          : showcase
-            ? "mt-8 grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 sm:gap-x-6 lg:grid-cols-4"
-            : "mt-8 grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 md:grid-cols-4 md:gap-x-6 xl:grid-cols-5 2xl:grid-cols-6",
-      )}
-    >
-      {products.map((product) => (
-        <ProductCard key={product.href} {...product} tone={home ? "home" : "catalog"} />
-      ))}
-    </div>
-  );
+  const grid =
+    products.length === 0 ? (
+      home ? (
+        <ProductCardSkeletonGrid count={4} tone="home" />
+      ) : (
+        <div className="mt-8 rounded-home border border-outline-variant/30 bg-surface-container-lowest">
+          <EmptyNotice
+            title="No records"
+            description="No products are listed in this collection yet."
+            className="min-h-[16rem] py-12 md:min-h-[18rem]"
+          />
+        </div>
+      )
+    ) : (
+      <div
+        className={cn(
+          home
+            ? "grid grid-cols-1 gap-grid-gutter sm:grid-cols-2 lg:grid-cols-4"
+            : showcase
+              ? "mt-8 grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 sm:gap-x-6 lg:grid-cols-4"
+              : "mt-8 grid grid-cols-2 gap-x-4 gap-y-10 sm:grid-cols-3 md:grid-cols-4 md:gap-x-6 xl:grid-cols-5 2xl:grid-cols-6",
+        )}
+      >
+        {products.map((product) => (
+          <ProductCard key={product.href} {...product} tone={home ? "home" : "catalog"} />
+        ))}
+      </div>
+    );
 
   if (home) {
     return (

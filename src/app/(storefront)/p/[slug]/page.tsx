@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { Breadcrumbs } from "@/components/catalog/breadcrumbs";
+import { toProductCardProps } from "@/components/home/map-product";
+import { ProductRail } from "@/components/home/product-rail";
 import { ProductBuyBox } from "@/components/product/product-buy-box";
 import { ProductGallery } from "@/components/product/product-gallery";
 import { ProductJsonLd } from "@/components/product/product-json-ld";
+import { EmptyNotice } from "@/components/ui/empty-notice";
 import { getCatalogProduct, HERBAL_DISCLAIMER } from "@/content/catalog";
 import { STORE_NAME } from "@/lib/constants";
 import { absoluteUrl, pageMetadata } from "@/lib/site";
-import { getProductBySlug } from "@/server/queries/products";
+import { getProductBySlug, listProducts } from "@/server/queries/products";
 
 export const dynamic = "force-dynamic";
 
@@ -50,25 +52,30 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const primary = variants.find((variant) => variant.stockQty > 0) ?? variants[0];
   const content = getCatalogProduct(product.slug);
 
-  if (!primary) {
-    notFound();
-  }
-
-  const related = (content?.relatedSlugs ?? [])
-    .map((relatedSlug) => getCatalogProduct(relatedSlug))
-    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  const relatedRows = await listProducts({
+    categorySlug: product.category.slug,
+    inStockOnly: true,
+    pageSize: 8,
+  });
+  const related = relatedRows
+    .filter((item) => item.slug !== product.slug)
+    .map(toProductCardProps)
+    .filter((card) => card !== null)
+    .slice(0, 4);
 
   return (
     <div className="flex flex-col gap-12 py-10 pb-28 md:gap-16 md:py-14 md:pb-14">
-      <ProductJsonLd
-        name={product.name}
-        description={product.description}
-        images={product.images}
-        sku={primary.sku}
-        pricePaise={primary.pricePaise}
-        inStock={variants.some((variant) => variant.stockQty > 0)}
-        url={productUrl(product.slug)}
-      />
+      {primary ? (
+        <ProductJsonLd
+          name={product.name}
+          description={product.description}
+          images={product.images}
+          sku={primary.sku}
+          pricePaise={primary.pricePaise}
+          inStock={variants.some((variant) => variant.stockQty > 0)}
+          url={productUrl(product.slug)}
+        />
+      ) : null}
       <Breadcrumbs
         items={[
           { label: "Home", href: "/" },
@@ -92,53 +99,47 @@ export default async function ProductPage({ params }: ProductPageProps) {
           {content?.nameTa ? (
             <p className="font-tamil mt-2 text-xl text-muted">{content.nameTa}</p>
           ) : null}
-          <p className="mt-4 max-w-lg text-base leading-relaxed text-muted">
-            {content?.shortDescription ?? product.description}
-          </p>
-          {content?.description && content.description !== content.shortDescription ? (
-            <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted">{content.description}</p>
+          {product.description ? (
+            <p className="mt-4 max-w-lg text-base leading-relaxed text-muted">
+              {product.description}
+            </p>
           ) : null}
           {product.category.slug === "naattu-marundhu" ? (
             <p className="mt-4 max-w-lg text-sm leading-relaxed text-muted">{HERBAL_DISCLAIMER}</p>
           ) : null}
           <div className="mt-8">
-            <ProductBuyBox
-              productName={product.name}
-              variants={variants.map((variant) => ({
-                id: variant.id,
-                name: variant.name,
-                sku: variant.sku,
-                pricePaise: variant.pricePaise,
-                mrpPaise: variant.mrpPaise,
-                weightGrams: variant.weightGrams,
-                stockQty: variant.stockQty,
-              }))}
-            />
+            {primary ? (
+              <ProductBuyBox
+                productName={product.name}
+                variants={variants.map((variant) => ({
+                  id: variant.id,
+                  name: variant.name,
+                  sku: variant.sku,
+                  pricePaise: variant.pricePaise,
+                  mrpPaise: variant.mrpPaise,
+                  weightGrams: variant.weightGrams,
+                  stockQty: variant.stockQty,
+                }))}
+              />
+            ) : (
+              <div className="rounded-home border border-outline-variant/30 bg-surface-container-lowest">
+                <EmptyNotice
+                  title="No records"
+                  description="This product has no active variants yet."
+                  className="min-h-[10rem] py-8"
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
-      <section className="border-t border-border/80 pt-10">
-        <h2 className="font-serif text-2xl">How to use</h2>
-        <p className="mt-4 max-w-xl text-base leading-relaxed text-muted">
-          {product.howToUse ??
-            "Use as you would at home. Follow the pack. Ask the shop if you are unsure."}
-        </p>
-      </section>
-      {related.length > 0 ? (
+      {product.howToUse ? (
         <section className="border-t border-border/80 pt-10">
-          <h2 className="font-serif text-2xl">Related</h2>
-          <ul className="mt-4 flex flex-col gap-2">
-            {related.map((item) => (
-              <li key={item.slug}>
-                <Link href={`/p/${item.slug}`} className="inline-flex min-h-11 items-center text-brand hover:underline">
-                  {item.name}
-                  <span className="font-tamil ml-2 text-muted">{item.nameTa}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <h2 className="font-serif text-2xl">How to use</h2>
+          <p className="mt-4 max-w-xl text-base leading-relaxed text-muted">{product.howToUse}</p>
         </section>
       ) : null}
+      {related.length > 0 ? <ProductRail title="Related" products={related} /> : null}
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import type { HomeContent } from "@/content/home-content";
+
 /** Integer paise. Never store or compute money as float. */
 export type Paise = number;
 
@@ -141,6 +143,8 @@ export type StoreSettings = {
   hours?: string | null;
   mapUrl?: string | null;
   announcement?: string | null;
+  heroImage?: string | null;
+  homeContent?: HomeContent | null;
   shippingRules?: {
     flatShippingPaise: number;
     label: string;

@@ -6,6 +6,9 @@ import { revalidateCatalog } from "@/server/admin/revalidate";
 import { getDb } from "@/server/db";
 import { categories, products, variants } from "@/server/db/schema";
 import { isDatabaseConfigured } from "@/server/env";
+import { slugify } from "@/lib/slug";
+import { CATEGORIES } from "@/content/catalog";
+import { HOME_RITUAL_SLUGS, HOME_RITUAL_TILES, isHomeRitualSlug } from "@/content/home-rituals";
 import {
   mockArchiveProduct,
   mockGetProductById,
@@ -13,9 +16,9 @@ import {
   mockListCategories,
   mockSaveProduct,
 } from "@/server/queries/mock-catalog";
-import type { AdminProduct } from "@/types/admin";
+import type { AdminHomeCategory, AdminProduct } from "@/types/admin";
 
-export type { AdminProduct };
+export type { AdminHomeCategory, AdminProduct };
 
 export class AdminError extends Error {
   constructor(
@@ -119,11 +122,9 @@ export async function listAdminCategories() {
       orderBy: [asc(categories.sortOrder), asc(categories.name)],
     });
     return rows.map((category) => ({ id: category.id, name: category.name }));
-  } catch {
-    return mockListCategories().map((category) => ({
-      id: category.id,
-      name: category.name,
-    }));
+  } catch (error) {
+    console.error("[admin] list categories failed", error);
+    return [];
   }
 }
 
@@ -162,15 +163,15 @@ export async function listAdminProducts(): Promise<AdminProduct[]> {
         isActive: variant.isActive,
       })),
     }));
-  } catch {
-    return mockListAllProducts().map((product) => mapMock(product)!);
+  } catch (error) {
+    console.error("[admin] list products failed", error);
+    return [];
   }
 }
 
 export async function getAdminProduct(id: string): Promise<AdminProduct | null> {
-  const fromMock = mapMock(mockGetProductById(id));
   if (!isDatabaseConfigured()) {
-    return fromMock;
+    return mapMock(mockGetProductById(id));
   }
 
   try {
@@ -180,7 +181,7 @@ export async function getAdminProduct(id: string): Promise<AdminProduct | null> 
       with: { category: true, variants: true },
     });
     if (!product) {
-      return fromMock;
+      return null;
     }
     return {
       id: product.id,
@@ -206,8 +207,9 @@ export async function getAdminProduct(id: string): Promise<AdminProduct | null> 
         isActive: variant.isActive,
       })),
     };
-  } catch {
-    return fromMock;
+  } catch (error) {
+    console.error("[admin] get product failed", error);
+    return null;
   }
 }
 
@@ -345,6 +347,178 @@ export async function archiveAdminProduct(id: string) {
   }
 
   revalidateCatalog(existing.slug);
+}
+
+export async function saveAdminHomeTile(slug: string, image: string | null) {
+  if (!isHomeRitualSlug(slug)) {
+    throw new AdminError("That tile is not part of the home layout.", 400);
+  }
+
+  const tile = HOME_RITUAL_TILES.find((item) => item.slug === slug);
+  if (!tile) {
+    throw new AdminError("That tile is not part of the home layout.", 400);
+  }
+
+  if (!isDatabaseConfigured()) {
+    throw new AdminError("Set DATABASE_URL before adding home tiles.", 400);
+  }
+
+  const db = getDb();
+  const meta = CATEGORIES.find((category) => category.slug === slug);
+  const imageValue = image?.trim() || null;
+  const sortOrder = HOME_RITUAL_SLUGS.indexOf(slug);
+  const values = {
+    name: tile.name,
+    slug: tile.slug,
+    description: meta?.description ?? null,
+    image: imageValue,
+    isActive: true,
+    sortOrder,
+  };
+
+  const existing = await db.query.categories.findFirst({
+    where: eq(categories.slug, slug),
+  });
+
+  if (existing) {
+    await db.update(categories).set(values).where(eq(categories.id, existing.id));
+    revalidateCatalog();
+    return existing.id;
+  }
+
+  if (!imageValue) {
+    return null;
+  }
+
+  const [created] = await db.insert(categories).values(values).returning();
+  if (!created) {
+    throw new AdminError("Could not save the tile.", 500);
+  }
+  revalidateCatalog();
+  return created.id;
+}
+
+export const homeTileBodySchema = z.object({
+  slug: z.enum(HOME_RITUAL_SLUGS),
+  image: z
+    .string()
+    .trim()
+    .nullable()
+    .refine((value) => !value || value.startsWith("/") || value.startsWith("https://"), {
+      message: "Images must be a site path or an https URL.",
+    }),
+});
+
+export const categoryBodySchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  image: z
+    .string()
+    .trim()
+    .nullable()
+    .refine((value) => !value || value.startsWith("/") || value.startsWith("https://"), {
+      message: "Images must be a site path or an https URL.",
+    }),
+});
+
+export async function listAdminHomeCategories(): Promise<AdminHomeCategory[]> {
+  if (!isDatabaseConfigured()) {
+    return mockListCategories().map((category) => ({
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      image: category.image,
+    }));
+  }
+
+  try {
+    const db = getDb();
+    const rows = await db.query.categories.findMany({
+      orderBy: [asc(categories.sortOrder), asc(categories.name)],
+    });
+    return rows.map((category) => ({
+      id: category.id,
+      name: category.name,
+      slug: category.slug,
+      image: category.image,
+    }));
+  } catch (error) {
+    console.error("[admin] list home categories failed", error);
+    return [];
+  }
+}
+
+export async function saveAdminCategory(
+  body: z.infer<typeof categoryBodySchema>,
+  id?: string,
+) {
+  const slug = slugify(body.name);
+  if (!slug) {
+    throw new AdminError("Enter a category name.", 400);
+  }
+
+  if (!isDatabaseConfigured()) {
+    throw new AdminError("Set DATABASE_URL before adding home categories.", 400);
+  }
+
+  const db = getDb();
+  const clash = await db.query.categories.findFirst({
+    where: id ? and(eq(categories.slug, slug), ne(categories.id, id)) : eq(categories.slug, slug),
+  });
+  if (clash) {
+    throw new AdminError("That category name is already used.", 409);
+  }
+
+  const image = body.image?.trim() || null;
+  const values = {
+    name: body.name,
+    slug,
+    image,
+    isActive: true,
+  };
+
+  if (id) {
+    const [updated] = await db
+      .update(categories)
+      .set(values)
+      .where(eq(categories.id, id))
+      .returning();
+    if (!updated) {
+      throw new AdminError("Category not found.", 404);
+    }
+    revalidateCatalog();
+    return updated.id;
+  }
+
+  const existingCount = await db.select({ id: categories.id }).from(categories);
+  const [created] = await db
+    .insert(categories)
+    .values({ ...values, sortOrder: existingCount.length })
+    .returning();
+  if (!created) {
+    throw new AdminError("Could not save the category.", 500);
+  }
+  revalidateCatalog();
+  return created.id;
+}
+
+export async function deleteAdminCategory(id: string) {
+  if (!isDatabaseConfigured()) {
+    throw new AdminError("Set DATABASE_URL before removing categories.", 400);
+  }
+
+  const db = getDb();
+  const linked = await db.query.products.findFirst({
+    where: eq(products.categoryId, id),
+  });
+  if (linked) {
+    throw new AdminError("Remove or move products in this category first.", 409);
+  }
+
+  const [removed] = await db.delete(categories).where(eq(categories.id, id)).returning();
+  if (!removed) {
+    throw new AdminError("Category not found.", 404);
+  }
+  revalidateCatalog();
 }
 
 

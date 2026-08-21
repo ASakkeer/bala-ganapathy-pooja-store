@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 
 const links = [
   { href: "/admin", name: "Overview", icon: "chart-simple" },
+  { href: "/admin/home", name: "Home", icon: "house" },
   { href: "/admin/products", name: "Products", icon: "boxes-stacked" },
   { href: "/admin/orders", name: "Orders", icon: "receipt" },
   { href: "/admin/settings", name: "Settings", icon: "gear" },

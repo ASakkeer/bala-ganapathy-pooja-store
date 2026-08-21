@@ -250,11 +250,17 @@ export function ProductForm({
             onChange={(event) => setCategoryId(event.target.value)}
             required
           >
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
+            {categories.length === 0 ? (
+              <option value="" disabled>
+                No records
               </option>
-            ))}
+            ) : (
+              categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))
+            )}
           </select>
         </div>
         <div>

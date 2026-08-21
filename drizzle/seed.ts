@@ -1,16 +1,8 @@
 import { loadEnvConfig } from "@next/env";
-import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { CATEGORIES, CATALOG_PRODUCTS } from "../src/content/catalog";
 import { SHOP_ADDRESS, SHOP_MAPS_SHARE_URL, SHOP_PHONES } from "../src/lib/maps";
-import {
-  categories,
-  products,
-  serviceablePincodes,
-  storeSettings,
-  variants,
-} from "../src/server/db/schema";
+import { serviceablePincodes, storeSettings } from "../src/server/db/schema";
 
 loadEnvConfig(process.cwd());
 
@@ -27,108 +19,10 @@ async function seed() {
 
   const client = postgres(url, { max: 1 });
   const db = drizzle(client, {
-    schema: { categories, products, variants, storeSettings, serviceablePincodes },
+    schema: { storeSettings, serviceablePincodes },
   });
 
   try {
-    for (const [index, category] of CATEGORIES.entries()) {
-      await db
-        .insert(categories)
-        .values({
-          name: category.name,
-          slug: category.slug,
-          description: category.description,
-          sortOrder: index,
-          isActive: true,
-        })
-        .onConflictDoUpdate({
-          target: categories.slug,
-          set: {
-            name: category.name,
-            description: category.description,
-            sortOrder: index,
-            isActive: true,
-          },
-        });
-    }
-
-    const categoryRows = await db.select().from(categories);
-    const categoryIdBySlug = new Map(categoryRows.map((row) => [row.slug, row.id]));
-
-    for (const product of CATALOG_PRODUCTS) {
-      const categoryId = categoryIdBySlug.get(product.categorySlug);
-
-      if (!categoryId) {
-        throw new Error(`Missing category ${product.categorySlug} while seeding.`);
-      }
-
-      await db
-        .insert(products)
-        .values({
-          name: product.name,
-          slug: product.slug,
-          description: product.shortDescription,
-          howToUse: product.howToUse,
-          categoryId,
-          status: "active",
-          seoTitle: `${product.name} / ${product.nameTa}`,
-          seoDescription: product.shortDescription,
-          images: product.images,
-          isFeatured: product.isFeatured,
-        })
-        .onConflictDoUpdate({
-          target: products.slug,
-          set: {
-            name: product.name,
-            description: product.shortDescription,
-            howToUse: product.howToUse,
-            categoryId,
-            status: "active",
-            seoTitle: `${product.name} / ${product.nameTa}`,
-            seoDescription: product.shortDescription,
-            images: product.images,
-            isFeatured: product.isFeatured,
-          },
-        });
-
-      const [saved] = await db
-        .select()
-        .from(products)
-        .where(eq(products.slug, product.slug))
-        .limit(1);
-
-      if (!saved) {
-        throw new Error(`Failed to save product ${product.slug}.`);
-      }
-
-      for (const variant of product.variants) {
-        await db
-          .insert(variants)
-          .values({
-            productId: saved.id,
-            sku: variant.sku,
-            name: variant.name,
-            pricePaise: variant.pricePaise,
-            mrpPaise: variant.mrpPaise,
-            weightGrams: variant.weightGrams,
-            stockQty: variant.stockQty,
-            isActive: true,
-          })
-          .onConflictDoUpdate({
-            target: variants.sku,
-            set: {
-              productId: saved.id,
-              name: variant.name,
-              pricePaise: variant.pricePaise,
-              mrpPaise: variant.mrpPaise,
-              weightGrams: variant.weightGrams,
-              stockQty: variant.stockQty,
-              isActive: true,
-            },
-          });
-      }
-    }
-
     await db
       .insert(storeSettings)
       .values({
@@ -165,7 +59,7 @@ async function seed() {
         set: { codAllowed: false },
       });
 
-    console.log("Seed complete. Sample catalog — replace in admin with real stock.");
+    console.log("Seed complete. Store settings only — add categories and products in admin.");
   } finally {
     await client.end({ timeout: 5 });
   }

@@ -41,7 +41,10 @@ export default async function AdminHomePage() {
         </p>
       ) : null}
       <div className="flex flex-wrap gap-3">
-        <Link href="/admin/products" className={buttonClassName("primary")}>
+        <Link href="/admin/home" className={buttonClassName("primary")}>
+          Home images
+        </Link>
+        <Link href="/admin/products" className={buttonClassName("secondary")}>
           Products
         </Link>
         <Link href="/admin/orders" className={buttonClassName("secondary")}>

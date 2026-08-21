@@ -4,20 +4,12 @@ import { Icon } from "@/components/ui/icon";
 import { formatListedPhone, listedPhones, telHref } from "@/lib/contact";
 import { mapsDirectionsHref, SHOP_ADDRESS, SHOP_ADDRESS_LINES } from "@/lib/maps";
 import {
-  CATEGORIES,
   FOOTER_COMPANY_LINKS,
   FOOTER_LEGAL_LINKS,
   FOOTER_SUPPORT_LINKS,
   STORE_NAME,
 } from "@/lib/constants";
-
-const shopLinks = [
-  { name: "All Products", href: "/shop" },
-  ...CATEGORIES.map((category) => ({
-    name: category.name,
-    href: `/c/${category.slug}`,
-  })),
-];
+import type { NavCategory } from "@/components/layout/header-category-nav";
 
 type FooterProps = {
   address?: string | null;
@@ -25,6 +17,7 @@ type FooterProps = {
   phones?: string[] | null;
   whatsapp?: string | null;
   mapUrl?: string | null;
+  categories?: NavCategory[];
 };
 
 function addressLines(value?: string | null) {
@@ -77,11 +70,18 @@ function FooterNav({
   );
 }
 
-export function Footer({ address, phones, mapUrl }: FooterProps) {
+export function Footer({ address, phones, mapUrl, categories = [] }: FooterProps) {
   const numbers = listedPhones(phones);
   const lines = addressLines(address);
   const directionsHref = mapsDirectionsHref(mapUrl, address);
   const year = new Date().getFullYear();
+  const shopLinks = [
+    { name: "All Products", href: "/shop" },
+    ...categories.map((category) => ({
+      name: category.name,
+      href: `/c/${category.slug}`,
+    })),
+  ];
 
   const addressBlock = lines.length ? (
     <div className="grid grid-cols-[1rem_minmax(0,1fr)] items-start gap-x-2.5">

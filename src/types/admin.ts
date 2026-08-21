@@ -22,3 +22,10 @@ export type AdminProduct = {
     isActive: boolean;
   }>;
 };
+
+export type AdminHomeCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  image: string | null;
+};

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AccountChevron } from "@/components/account/account-ui";
 import { Badge } from "@/components/ui/badge";
 import { buttonClassName } from "@/components/ui/button";
+import { EmptyNotice } from "@/components/ui/empty-notice";
 import { formatPaise } from "@/lib/money";
 import { formatOrderDate, orderStatusLabel } from "@/lib/order-status";
 import type { OrderStatus } from "@/types";
@@ -49,14 +50,11 @@ function itemSummary(items: AccountOrderListItem["items"]) {
 export function AccountOrderList({ orders }: { orders: AccountOrderListItem[] }) {
   if (orders.length === 0) {
     return (
-      <div className="px-5 py-8 sm:px-6">
-        <p className="text-sm leading-relaxed text-muted">
-          No orders yet. Browse the shop when you need pooja items.
-        </p>
-        <Link href="/shop" className={`${buttonClassName("primary")} mt-5 w-full sm:w-auto`}>
-          Shop pooja items
-        </Link>
-      </div>
+      <EmptyNotice
+        title="No records"
+        description="No orders yet. Browse the shop when you need pooja items."
+        className="min-h-[12rem] px-5 py-10 sm:px-6"
+      />
     );
   }
 

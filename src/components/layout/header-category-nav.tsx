@@ -3,12 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { CATEGORIES } from "@/lib/constants";
 
 const linkClassName =
   "font-label-caps whitespace-nowrap text-on-surface-variant transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary";
 
-export function HeaderCategoryNav() {
+export type NavCategory = {
+  slug: string;
+  name: string;
+  shortName?: string;
+};
+
+export function HeaderCategoryNav({
+  categories = [],
+}: {
+  categories?: NavCategory[];
+}) {
   const pathname = usePathname();
 
   return (
@@ -16,7 +25,7 @@ export function HeaderCategoryNav() {
       aria-label="Product categories"
       className="hidden w-full items-center justify-center gap-8 overflow-x-auto pt-2 no-scrollbar md:flex"
     >
-      {CATEGORIES.map((category) => {
+      {categories.map((category) => {
         const href = `/c/${category.slug}`;
         const active = pathname === href;
 
@@ -26,7 +35,7 @@ export function HeaderCategoryNav() {
             href={href}
             className={cn(linkClassName, active && "border-b-2 border-primary pb-1 text-primary")}
           >
-            {category.shortName}
+            {category.shortName ?? category.name}
           </Link>
         );
       })}

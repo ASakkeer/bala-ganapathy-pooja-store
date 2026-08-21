@@ -33,8 +33,9 @@ async function fetchServiceablePincode(pincode: string): Promise<ServiceablePinc
       .limit(1);
 
     return row ?? null;
-  } catch {
-    return mockGetPincode(pincode) ?? null;
+  } catch (error) {
+    console.error("[pincode] database query failed", error);
+    return null;
   }
 }
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { buttonClassName } from "@/components/ui/button";
+import { EmptyNotice } from "@/components/ui/empty-notice";
 import { formatPaise } from "@/lib/money";
 import { listAdminProducts } from "@/server/admin/catalog";
 
@@ -29,7 +30,18 @@ export default async function AdminProductsPage() {
             </tr>
           </thead>
           <tbody>
-            {products.map((product) => {
+            {products.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="p-0">
+                  <EmptyNotice
+                    title="No records"
+                    description="No products in the catalog yet. Add the first listing."
+                    className="min-h-[12rem] py-10"
+                  />
+                </td>
+              </tr>
+            ) : (
+              products.map((product) => {
               const stock = product.variants.reduce((sum, variant) => sum + variant.stockQty, 0);
               const price = product.variants[0]?.pricePaise;
               return (
@@ -51,12 +63,10 @@ export default async function AdminProductsPage() {
                   </td>
                 </tr>
               );
-            })}
+            })
+            )}
           </tbody>
         </table>
-        {products.length === 0 ? (
-          <p className="px-4 py-8 text-sm text-muted">No products yet. Add the first listing.</p>
-        ) : null}
       </div>
     </div>
   );

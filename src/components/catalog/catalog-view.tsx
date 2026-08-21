@@ -1,5 +1,4 @@
 import { Breadcrumbs } from "@/components/catalog/breadcrumbs";
-import { CatalogEmpty } from "@/components/catalog/catalog-empty";
 import { CatalogPagination } from "@/components/catalog/catalog-pagination";
 import { CatalogToolbar } from "@/components/catalog/catalog-toolbar";
 import { ProductGrid } from "@/components/catalog/product-grid";
@@ -38,24 +37,21 @@ export function CatalogView({
       <Breadcrumbs items={breadcrumbs} />
       <SectionHeading as="h1" title={title} description={description} />
       <CatalogToolbar sort={sort} inStockOnly={inStockOnly} resultCount={total} />
-      {products.length === 0 ? (
-        <CatalogEmpty
-          title="Nothing to show yet"
-          description="We don’t have items here online yet. Browse daily pooja, or contact the shop."
+      <ProductGrid
+        products={products}
+        emptyTitle="No records"
+        emptyDescription="No products are listed here yet. Add them in admin, or browse another category."
+      />
+      {products.length > 0 ? (
+        <CatalogPagination
+          pathname={pathname}
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          sort={sort}
+          inStockOnly={inStockOnly}
         />
-      ) : (
-        <>
-          <ProductGrid products={products} />
-          <CatalogPagination
-            pathname={pathname}
-            page={page}
-            pageSize={pageSize}
-            total={total}
-            sort={sort}
-            inStockOnly={inStockOnly}
-          />
-        </>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -22,15 +22,16 @@ import {
   mockGetVariantsByIds,
 } from "@/server/queries/mock-catalog";
 
-async function liveOrMock<T>(live: () => Promise<T>, mock: () => T): Promise<T> {
+async function liveOrMock<T>(live: () => Promise<T>, mock: () => T, empty: T): Promise<T> {
   if (!isDatabaseConfigured()) {
     return mock();
   }
 
   try {
     return await live();
-  } catch {
-    return mock();
+  } catch (error) {
+    console.error("[catalog] database query failed", error);
+    return empty;
   }
 }
 
@@ -42,7 +43,7 @@ async function fetchCategories() {
       where: eq(categories.isActive, true),
       orderBy: [asc(categories.sortOrder), asc(categories.name)],
     });
-  }, mockListCategories);
+  }, mockListCategories, []);
 }
 
 async function fetchProductBySlug(slug: string) {
@@ -64,6 +65,7 @@ async function fetchProductBySlug(slug: string) {
       });
     },
     () => mockGetProductBySlug(canonical),
+    undefined,
   );
 }
 
@@ -127,7 +129,7 @@ async function fetchProducts(options?: {
     }
 
     return rows.filter((product) => product.variants.length > 0);
-  }, () => mockListProducts(options));
+  }, () => mockListProducts(options), []);
 }
 
 async function fetchProductCount() {
@@ -139,7 +141,7 @@ async function fetchProductCount() {
       .where(eq(products.status, "active"));
 
     return Number(row?.count ?? 0);
-  }, mockCountProducts);
+  }, mockCountProducts, 0);
 }
 
 export type ListedProduct = Awaited<ReturnType<typeof fetchProducts>>[number];
@@ -154,6 +156,7 @@ async function fetchCategoryBySlug(slug: string) {
       });
     },
     () => mockGetCategoryBySlug(slug),
+    undefined,
   );
 }
 
@@ -164,10 +167,12 @@ async function fetchCatalog(options: {
   page?: number;
   pageSize?: number;
 }) {
+  const page = options.page && options.page > 0 ? options.page : 1;
+  const pageSize = options.pageSize ?? PAGE_SIZE;
+  const empty = { items: [] as ListedProduct[], total: 0, page, pageSize };
+
   return liveOrMock(async () => {
     const db = getDb();
-    const page = options.page && options.page > 0 ? options.page : 1;
-    const pageSize = options.pageSize ?? PAGE_SIZE;
     const offset = (page - 1) * pageSize;
     const sort = options.sort ?? "featured";
     const filters = [eq(products.status, "active")];
@@ -241,7 +246,7 @@ async function fetchCatalog(options: {
       page,
       pageSize,
     };
-  }, () => mockListCatalog(options));
+  }, () => mockListCatalog(options), empty);
 }
 
 async function fetchSearchProducts(
@@ -255,6 +260,8 @@ async function fetchSearchProducts(
   if (!query) {
     return { items: [], total: 0, page, pageSize, query };
   }
+
+  const empty = { items: [] as ListedProduct[], total: 0, page, pageSize, query };
 
   return liveOrMock(
     async () => {
@@ -300,11 +307,12 @@ async function fetchSearchProducts(
       };
     },
     () => mockSearchProducts(query, { page, pageSize }),
+    empty,
   );
 }
 
 export const listCategories = cachedQuery(
-  () => ["catalog:categories"],
+  () => ["catalog:categories:v2"],
   fetchCategories,
   {
     revalidate: CACHE_TTL.categories,
@@ -313,7 +321,7 @@ export const listCategories = cachedQuery(
 );
 
 export const getProductBySlug = cachedQuery(
-  (slug: string) => ["catalog:product", slug],
+  (slug: string) => ["catalog:product:v2", slug],
   fetchProductBySlug,
   {
     revalidate: CACHE_TTL.products,
@@ -322,7 +330,7 @@ export const getProductBySlug = cachedQuery(
 );
 
 export const listProducts = cachedQuery(
-  (options?: Parameters<typeof fetchProducts>[0]) => ["catalog:products", JSON.stringify(options ?? {})],
+  (options?: Parameters<typeof fetchProducts>[0]) => ["catalog:products:v2", JSON.stringify(options ?? {})],
   fetchProducts,
   {
     revalidate: CACHE_TTL.products,
@@ -331,7 +339,7 @@ export const listProducts = cachedQuery(
 );
 
 export const countProducts = cachedQuery(
-  () => ["catalog:product-count"],
+  () => ["catalog:product-count:v2"],
   fetchProductCount,
   {
     revalidate: CACHE_TTL.products,
@@ -340,7 +348,7 @@ export const countProducts = cachedQuery(
 );
 
 export const getCategoryBySlug = cachedQuery(
-  (slug: string) => ["catalog:category", slug],
+  (slug: string) => ["catalog:category:v2", slug],
   fetchCategoryBySlug,
   {
     revalidate: CACHE_TTL.categories,
@@ -349,7 +357,7 @@ export const getCategoryBySlug = cachedQuery(
 );
 
 export const listCatalog = cachedQuery(
-  (options: Parameters<typeof fetchCatalog>[0]) => ["catalog:list", JSON.stringify(options)],
+  (options: Parameters<typeof fetchCatalog>[0]) => ["catalog:list:v2", JSON.stringify(options)],
   fetchCatalog,
   {
     revalidate: CACHE_TTL.products,
@@ -359,7 +367,7 @@ export const listCatalog = cachedQuery(
 
 export const searchProducts = cachedQuery(
   (rawQuery: string, options?: { page?: number; pageSize?: number }) => [
-    "catalog:search",
+    "catalog:search:v2",
     rawQuery,
     JSON.stringify(options ?? {}),
   ],
@@ -396,5 +404,6 @@ export const getVariantsByIds = cache(async (ids: string[]) => {
       });
     },
     () => mockGetVariantsByIds(uniqueIds),
+    [],
   );
 });
