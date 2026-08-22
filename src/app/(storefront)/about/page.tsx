@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/catalog/breadcrumbs";
+import { JsonLd } from "@/components/seo/json-ld";
 import { buttonClassName } from "@/components/ui/button";
 import { EmptyNotice } from "@/components/ui/empty-notice";
 import { STORE_NAME } from "@/lib/constants";
-import { pageMetadata } from "@/lib/site";
+import { absoluteUrl, pageMetadata } from "@/lib/site";
 import { listCategories } from "@/server/queries/products";
 
 export const metadata = pageMetadata({
@@ -19,6 +20,15 @@ export default async function AboutPage() {
 
   return (
     <div className="flex flex-col gap-10 py-10 md:py-14">
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "AboutPage",
+          name: `About | ${STORE_NAME}`,
+          description: `A physical pooja shop with an online catalog — ${STORE_NAME}.`,
+          url: absoluteUrl("/about"),
+        }}
+      />
       <div>
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "About" }]} />
         <p className="mt-8 text-xs tracking-[0.18em] uppercase text-muted">The shop</p>

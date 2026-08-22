@@ -13,6 +13,7 @@ export default function TermsPage() {
   return (
     <PolicyPage
       title="Terms"
+      path="/policies/terms"
       intro="These terms cover browsing and buying on this site. They are a starter draft until the owner reviews them."
       sections={TERMS_SECTIONS}
     />

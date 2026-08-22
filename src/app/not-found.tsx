@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { StoreLogo } from "@/components/brand/store-logo";
 import { buttonClassName } from "@/components/ui/button";
+import { STORE_NAME } from "@/lib/constants";
+
+export const metadata: Metadata = {
+  title: `Page not found | ${STORE_NAME}`,
+  robots: { index: false, follow: true },
+};
 
 export default function RootNotFound() {
   return (

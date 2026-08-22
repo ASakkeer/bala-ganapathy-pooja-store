@@ -13,6 +13,7 @@ export default function ReturnsPolicyPage() {
   return (
     <PolicyPage
       title="Returns"
+      path="/policies/returns"
       intro="Packed consumables cannot come back. Damaged parcels need photos within 48 hours. Cancel only before the shop packs the order."
       sections={RETURNS_SECTIONS}
     />

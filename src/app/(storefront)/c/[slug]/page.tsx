@@ -31,6 +31,7 @@ export async function generateMetadata({
       category.description ??
       `Shop ${category.name} online at ${STORE_NAME}. Pack sizes, prices, and stock.`,
     path: `/c/${category.slug}`,
+    images: category.image ? [category.image] : undefined,
   });
 }
 

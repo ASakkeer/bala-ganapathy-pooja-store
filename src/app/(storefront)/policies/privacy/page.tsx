@@ -13,6 +13,7 @@ export default function PrivacyPolicyPage() {
   return (
     <PolicyPage
       title="Privacy"
+      path="/policies/privacy"
       intro="We keep the phone number you sign in with, addresses you save, and order records needed to pack and track. Payment details stay with Razorpay."
       sections={PRIVACY_SECTIONS}
     />

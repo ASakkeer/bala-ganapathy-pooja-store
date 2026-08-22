@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/catalog/breadcrumbs";
-import { POLICY_LINKS } from "@/lib/constants";
+import { JsonLd } from "@/components/seo/json-ld";
+import { POLICY_LINKS, STORE_NAME } from "@/lib/constants";
+import { absoluteUrl } from "@/lib/site";
 
 export type PolicySection = {
   heading: string;
@@ -10,16 +12,27 @@ export type PolicySection = {
 export function PolicyPage({
   title,
   intro,
+  path,
   sections,
   children,
 }: {
   title: string;
   intro: string;
+  path: string;
   sections: PolicySection[];
   children?: React.ReactNode;
 }) {
   return (
     <article className="flex flex-col gap-10 py-10 md:py-14">
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: `${title} | ${STORE_NAME}`,
+          description: intro,
+          url: absoluteUrl(path),
+        }}
+      />
       <div>
         <Breadcrumbs
           items={[

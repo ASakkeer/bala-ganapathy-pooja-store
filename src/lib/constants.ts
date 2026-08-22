@@ -5,8 +5,27 @@ export const STORE_NAME = "Bala Ganapathy Pooja Store";
 /** Served from `public/assets/bgps-logo.png`. Query busts stale browser/optimizer cache. */
 export const STORE_LOGO_SRC = "/assets/bgps-logo.png?v=3";
 
+/** Tab icon and Apple touch icon. Served from `public/assets/bgps-favicon.png`. */
+export const STORE_FAVICON_SRC = "/assets/bgps-favicon.png";
+
 /** Light mark for the maroon footer only. */
 export const STORE_FOOTER_LOGO_SRC = "/assets/bgps-footer-logo.png";
+
+export const STORE_THEME_COLOR = "#5b0719";
+export const STORE_BACKGROUND_COLOR = "#fcf9f8";
+
+export const STORE_SEO_DESCRIPTION =
+  "Traditional pooja essentials, Ganapathy and Navagraha Homam materials, kumbabishekam requirements, and naattu marundhu from Bala Ganapathy Pooja Store, R.S. Puram, Coimbatore.";
+
+export const STORE_SEO_KEYWORDS = [
+  "Bala Ganapathy Pooja Store",
+  "pooja store Coimbatore",
+  "pooja samagri R.S. Puram",
+  "Ganapathy Homam materials",
+  "Navagraha Homam",
+  "kumbabishekam",
+  "naattu marundhu",
+] as const;
 
 export const DEFAULT_CURRENCY = "INR" as const;
 

@@ -3,8 +3,10 @@ import { CatalogPagination } from "@/components/catalog/catalog-pagination";
 import { CatalogToolbar } from "@/components/catalog/catalog-toolbar";
 import { ProductGrid } from "@/components/catalog/product-grid";
 import { toProductCardProps } from "@/components/home/map-product";
+import { CatalogJsonLd } from "@/components/seo/catalog-json-ld";
 import { SectionHeading } from "@/components/ui/section-heading";
 import type { CatalogSort } from "@/lib/catalog";
+import { absoluteUrl } from "@/lib/site";
 import type { ListedProduct } from "@/server/queries/products";
 
 export function CatalogView({
@@ -34,6 +36,16 @@ export function CatalogView({
 
   return (
     <div className="flex flex-col gap-8 py-10 md:py-14">
+      <CatalogJsonLd
+        name={title}
+        description={description}
+        path={pathname}
+        items={products.map((product) => ({
+          name: product.title,
+          url: absoluteUrl(product.href),
+          image: product.imageSrc ? absoluteUrl(product.imageSrc) : undefined,
+        }))}
+      />
       <Breadcrumbs items={breadcrumbs} />
       <SectionHeading as="h1" title={title} description={description} />
       <CatalogToolbar sort={sort} inStockOnly={inStockOnly} resultCount={total} />

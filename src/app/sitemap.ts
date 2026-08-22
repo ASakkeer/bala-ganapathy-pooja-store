@@ -9,7 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     listCatalog({ page: 1, pageSize: 500 }),
   ]);
 
-  const staticPages = [
+  const staticPages: MetadataRoute.Sitemap = [
     "/",
     "/shop",
     "/about",
@@ -17,21 +17,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...POLICY_LINKS.map((link) => link.href),
   ].map((path) => ({
     url: absoluteUrl(path),
-    changeFrequency: "weekly" as const,
-    priority: path === "/" ? 1 : 0.6,
+    lastModified: new Date(),
+    changeFrequency: path === "/" ? "daily" : "weekly",
+    priority: path === "/" ? 1 : path === "/shop" ? 0.9 : 0.6,
   }));
 
-  const categoryPages = categories.map((category) => ({
+  const categoryPages: MetadataRoute.Sitemap = categories.map((category) => ({
     url: absoluteUrl(`/c/${category.slug}`),
-    changeFrequency: "daily" as const,
+    lastModified: category.createdAt ?? new Date(),
+    changeFrequency: "daily",
     priority: 0.8,
   }));
 
-  const productPages = catalog.items.map((product) => ({
-    url: absoluteUrl(`/p/${product.slug}`),
-    changeFrequency: "daily" as const,
-    priority: 0.7,
-  }));
+  const productPages: MetadataRoute.Sitemap = catalog.items.map((product) => {
+    const image = product.images[0] ? absoluteUrl(product.images[0]) : undefined;
+    return {
+      url: absoluteUrl(`/p/${product.slug}`),
+      lastModified: product.updatedAt ?? new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.7,
+      ...(image ? { images: [image] } : {}),
+    };
+  });
 
   return [...staticPages, ...categoryPages, ...productPages];
 }

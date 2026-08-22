@@ -38,6 +38,7 @@ export async function generateMetadata({
     description: product.seoDescription ?? product.description ?? product.name,
     path: `/p/${product.slug}`,
     images: product.images[0] ? [product.images[0]] : undefined,
+    keywords: product.searchKeywords?.length ? product.searchKeywords : undefined,
   });
 }
 
@@ -75,6 +76,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           pricePaise={primary.pricePaise}
           inStock={variants.some((variant) => variant.stockQty > 0)}
           url={productUrl(product.slug)}
+          category={product.category.name}
         />
       ) : null}
       <Breadcrumbs

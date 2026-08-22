@@ -20,6 +20,7 @@ export default async function ShippingPolicyPage() {
   return (
     <PolicyPage
       title="Shipping"
+      path="/policies/shipping"
       intro="Coverage and charges come from store settings and are checked with your pincode at checkout."
       sections={SHIPPING_SECTIONS}
     >

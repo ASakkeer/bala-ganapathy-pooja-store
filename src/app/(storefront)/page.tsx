@@ -9,18 +9,17 @@ import { toProductCardProps } from "@/components/home/map-product";
 import { ProductRail } from "@/components/home/product-rail";
 import { HeroBanner } from "@/components/home/hero-banner";
 import { TrustStrip } from "@/components/home/trust-strip";
-import { OrganizationJsonLd } from "@/components/seo/organization-json-ld";
 import { resolveHomeContent } from "@/content/home-content";
-import { STORE_NAME } from "@/lib/constants";
+import { STORE_NAME, STORE_SEO_DESCRIPTION, STORE_SEO_KEYWORDS } from "@/lib/constants";
 import { pageMetadata } from "@/lib/site";
 import { listCategories, listProducts } from "@/server/queries/products";
 import { getStoreSettings } from "@/server/queries/store";
 
 export const metadata = pageMetadata({
   title: STORE_NAME,
-  description:
-    "Traditional pooja essentials, Ganapathy and Navagraha Homam materials, kumbabishekam requirements, and naattu marundhu from Bala Ganapathy Pooja Store, R.S. Puram, Coimbatore.",
+  description: STORE_SEO_DESCRIPTION,
   path: "/",
+  keywords: [...STORE_SEO_KEYWORDS],
 });
 
 export const dynamic = "force-dynamic";
@@ -79,7 +78,6 @@ async function HomeTrust() {
 export default function Home() {
   return (
     <div className="flex flex-col">
-      <OrganizationJsonLd />
       <Suspense fallback={<HeroBanner content={resolveHomeContent()} />}>
         <HomeHero />
       </Suspense>

@@ -3,6 +3,7 @@ import { MiniCartOverlay } from "@/components/cart/mini-cart-overlay";
 import { AnnouncementBar } from "@/components/layout/announcement-bar";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
+import { OrganizationJsonLd } from "@/components/seo/organization-json-ld";
 import { Container } from "@/components/ui/container";
 import { ANNOUNCEMENT_MESSAGE } from "@/lib/constants";
 import { getCart } from "@/server/cart";
@@ -40,6 +41,7 @@ export default async function StorefrontLayout({
       signedIn={Boolean(session)}
     >
       <div id="top" className="flex min-h-full flex-1 flex-col">
+        <OrganizationJsonLd />
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-sm focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:text-on-primary"

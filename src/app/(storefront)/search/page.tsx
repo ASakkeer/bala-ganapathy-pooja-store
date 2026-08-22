@@ -6,6 +6,7 @@ import { toProductCardProps } from "@/components/home/map-product";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { STORE_NAME } from "@/lib/constants";
 import { parseSearchQuery } from "@/lib/search";
+import { pageMetadata } from "@/lib/site";
 import { searchProducts } from "@/server/queries/products";
 
 export const dynamic = "force-dynamic";
@@ -20,10 +21,15 @@ export async function generateMetadata({
 }: SearchPageProps): Promise<Metadata> {
   const query = parseSearchQuery((await searchParams).q);
 
-  return {
+  return pageMetadata({
     title: query ? `Search “${query}” | ${STORE_NAME}` : `Search | ${STORE_NAME}`,
-    robots: { index: false, follow: true },
-  };
+    description: query
+      ? `Search results for “${query}” at ${STORE_NAME}.`
+      : `Search pooja products at ${STORE_NAME}.`,
+    path: "/search",
+    index: false,
+    follow: true,
+  });
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {

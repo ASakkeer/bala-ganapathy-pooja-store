@@ -17,7 +17,7 @@ import {
   mapsDirectionsHref,
   mapsEmbedUrlFromAddress,
 } from "@/lib/maps";
-import { absoluteUrl } from "@/lib/site";
+import { absoluteUrl, storeEntityId } from "@/lib/site";
 
 type ContactViewProps = {
   address?: string | null;
@@ -48,12 +48,8 @@ function IconFrame({
 }
 
 function ContactJsonLd({
-  address,
-  phones,
   whatsapp,
 }: {
-  address?: string | null;
-  phones: string[];
   whatsapp?: string | null;
 }) {
   const chatHref = whatsappHref(whatsapp);
@@ -65,14 +61,8 @@ function ContactJsonLd({
         "@type": "ContactPage",
         name: `Contact | ${STORE_NAME}`,
         url: absoluteUrl("/contact"),
-        mainEntity: {
-          "@type": "LocalBusiness",
-          name: STORE_NAME,
-          url: absoluteUrl("/"),
-          telephone: phones.map((phone) => telHref(phone).replace("tel:", "")),
-          ...(address?.trim() ? { address: address.trim() } : {}),
-          ...(chatHref ? { sameAs: [chatHref] } : {}),
-        },
+        mainEntity: { "@id": storeEntityId() },
+        ...(chatHref ? { sameAs: [chatHref] } : {}),
       }}
     />
   );
@@ -94,7 +84,7 @@ export function ContactView({
 
   return (
     <div className="flex flex-col gap-8 py-8 md:gap-10 md:py-12">
-      <ContactJsonLd address={address} phones={numbers} whatsapp={whatsapp} />
+      <ContactJsonLd whatsapp={whatsapp} />
 
       <header className="flex flex-col gap-4">
         <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "Contact" }]} />

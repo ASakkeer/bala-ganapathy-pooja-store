@@ -5,11 +5,24 @@ export default function robots(): MetadataRoute.Robots {
   const origin = siteOrigin();
 
   return {
-    rules: {
-      userAgent: "*",
-      allow: "/",
-      disallow: ["/admin", "/admin/", "/cart", "/checkout", "/account", "/api/", "/login", "/order"],
-    },
+    rules: [
+      {
+        userAgent: "*",
+        allow: "/",
+        disallow: [
+          "/admin",
+          "/admin/",
+          "/cart",
+          "/checkout",
+          "/account",
+          "/api/",
+          "/login",
+          "/order",
+          "/track",
+        ],
+      },
+    ],
     sitemap: `${origin}/sitemap.xml`,
+    host: origin,
   };
 }

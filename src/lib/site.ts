@@ -19,29 +19,60 @@ export function absoluteUrl(path = "/") {
   return `${origin}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+export function storeEntityId() {
+  return `${siteOrigin()}/#store`;
+}
+
+export function websiteEntityId() {
+  return `${siteOrigin()}/#website`;
+}
+
 export function pageMetadata({
   title,
   description,
   path,
   images,
   index = true,
+  keywords,
+  follow,
 }: {
   title: string;
   description: string;
   path: string;
   images?: string[];
   index?: boolean;
+  keywords?: string[];
+  follow?: boolean;
 }): Metadata {
   const url = absoluteUrl(path);
+  const shouldFollow = follow ?? index;
   const absoluteImages = (images?.length ? images : [STORE_LOGO_SRC]).map((image) =>
     absoluteUrl(image),
   );
+  const ogImages = absoluteImages.map((image) => ({
+    url: image,
+    alt: title,
+  }));
 
   return {
     title,
     description,
-    alternates: { canonical: url },
-    robots: index ? { index: true, follow: true } : { index: false, follow: false },
+    keywords: keywords?.length ? keywords : undefined,
+    alternates: {
+      canonical: url,
+      languages: {
+        "en-IN": url,
+        "x-default": url,
+      },
+    },
+    robots: {
+      index,
+      follow: shouldFollow,
+      googleBot: {
+        index,
+        follow: shouldFollow,
+      },
+    },
     openGraph: {
       title,
       description,
@@ -49,7 +80,7 @@ export function pageMetadata({
       siteName: STORE_NAME,
       locale: "en_IN",
       type: "website",
-      images: absoluteImages,
+      images: ogImages,
     },
     twitter: {
       card: images?.length ? "summary_large_image" : "summary",
