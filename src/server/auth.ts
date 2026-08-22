@@ -306,6 +306,35 @@ async function issueSession(user: StoredUser) {
   return { token, user };
 }
 
+async function signInExistingUserWithGoogle(
+  user: StoredUser,
+  profile: { sub: string; email?: string | null; name?: string },
+) {
+  if (user.googleSub && user.googleSub !== profile.sub) {
+    throw new AuthError("This account is already linked to another Google sign-in.", 409);
+  }
+
+  const nextName =
+    user.name && user.name !== PLACEHOLDER_PROFILE_NAME
+      ? user.name
+      : profile.name?.trim() || user.name;
+
+  const signedIn = await persistUser({
+    ...user,
+    name: nextName,
+    email: user.email ?? normalizeEmail(profile.email) ?? null,
+    googleSub: profile.sub,
+  });
+
+  const session = await issueSession(signedIn);
+  return {
+    ...session,
+    phone: signedIn.phone,
+    signedIn: true as const,
+    needsPinLogin: false as const,
+  };
+}
+
 export async function readAuthIntent(): Promise<AuthIntent | null> {
   return verifyAuthIntent((await cookies()).get(AUTH_INTENT_COOKIE)?.value);
 }
@@ -437,7 +466,10 @@ export async function loginWithPin(rawPhone: string, rawPin: string, headers: He
 export async function saveRegistrationDetails(
   input: { name?: string; email?: string; phone?: string },
   headers: Headers,
-) {
+): Promise<
+  | { phone: string; signedIn: true; token: string; user: StoredUser; needsPinLogin: false }
+  | { phone: string; signedIn: false; intentToken: string; needsPinLogin: boolean }
+> {
   const intent = await readAuthIntent();
   if (!intent || (intent.stage !== "register" && intent.stage !== "set-pin" && intent.stage !== "google")) {
     throw new AuthError("Enter your mobile number first.", 400);
@@ -464,18 +496,15 @@ export async function saveRegistrationDetails(
   }
 
   const existing = await findUserByPhone(phone);
+  if (existing && intent.googleSub) {
+    return signInExistingUserWithGoogle(existing, {
+      sub: intent.googleSub,
+      email: intent.googleEmail ?? parsed.data.email,
+      name: parsed.data.name.trim(),
+    });
+  }
+
   if (existing?.pinHash) {
-    if (intent.googleSub) {
-      const intentToken = await writeAuthIntent({
-        phone,
-        name: existing.name,
-        email: existing.email,
-        googleSub: intent.googleSub,
-        googleEmail: intent.googleEmail,
-        stage: "pin",
-      });
-      return { phone, intentToken, needsPinLogin: true as const };
-    }
     throw new AuthError("This number already has an account. Sign in with your PIN.", 409);
   }
 
@@ -489,7 +518,7 @@ export async function saveRegistrationDetails(
     stage: "set-pin",
   });
 
-  return { phone, intentToken, needsPinLogin: false as const };
+  return { phone, intentToken, needsPinLogin: false as const, signedIn: false as const };
 }
 
 export async function setPinAndCreateAccount(rawPin: string, rawConfirm: string, headers: Headers) {
@@ -573,20 +602,9 @@ export async function loginWithGoogle(credential: string, headers: Headers) {
   }
 
   const byEmail = profile.email ? await findUserByEmail(profile.email) : null;
-  if (byEmail?.pinHash) {
-    const intentToken = await writeAuthIntent({
-      phone: byEmail.phone,
-      name: byEmail.name,
-      email: byEmail.email,
-      googleSub: profile.sub,
-      googleEmail: profile.email,
-      stage: "pin",
-    });
-    return {
-      kind: "link-pin" as const,
-      phone: byEmail.phone,
-      intentToken,
-    };
+  if (byEmail) {
+    const signedIn = await signInExistingUserWithGoogle(byEmail, profile);
+    return { kind: "session" as const, token: signedIn.token, user: signedIn.user };
   }
 
   const intentToken = await writeAuthIntent({

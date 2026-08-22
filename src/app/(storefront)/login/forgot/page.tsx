@@ -30,7 +30,7 @@ export default async function ForgotPinPage({
       heading="Forgot PIN?"
       description="Enter the mobile number on the account. We will tell you how to get back in."
       heroTitle="Reset is handled by the shop."
-      heroBody="There is no SMS code. If Google is linked, you can sign in that way instead."
+      heroBody="There is no SMS code. Call the shop with your mobile number so they can clear the PIN."
     >
       <ForgotPinForm nextPath={nextPath} />
     </AuthShell>

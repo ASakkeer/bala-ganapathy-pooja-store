@@ -23,9 +23,8 @@ export async function POST(request: Request) {
       NextResponse.json({
         ok: true,
         kind: result.kind,
-        phone: "phone" in result ? result.phone : undefined,
-        name: "name" in result ? result.name : undefined,
-        email: "email" in result ? result.email : undefined,
+        name: result.name,
+        email: result.email,
       }),
       result.intentToken,
     );

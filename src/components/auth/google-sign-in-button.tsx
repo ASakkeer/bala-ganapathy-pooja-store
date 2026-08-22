@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { buttonClassName } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 
 declare global {
   interface Window {
@@ -10,18 +12,16 @@ declare global {
           initialize: (config: {
             client_id: string;
             callback: (response: { credential: string }) => void;
+            ux_mode?: string;
+            auto_select?: boolean;
+            cancel_on_tap_outside?: boolean;
           }) => void;
-          renderButton: (
-            parent: HTMLElement,
-            options: {
-              type?: string;
-              theme?: string;
-              size?: string;
-              text?: string;
-              shape?: string;
-              width?: number;
-            },
-          ) => void;
+          prompt: (callback?: (notification: {
+            isNotDisplayed: () => boolean;
+            isSkippedMoment: () => boolean;
+            isDismissedMoment: () => boolean;
+            getNotDisplayedReason?: () => string;
+          }) => void) => void;
         };
       };
     };
@@ -30,76 +30,132 @@ declare global {
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
+export type GoogleAuthKind = "session" | "register";
+
+export async function submitGoogleCredential(credential: string) {
+  const response = await fetch("/api/auth/google", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ credential }),
+  });
+  const payload = (await response.json()) as {
+    error?: string;
+    kind?: GoogleAuthKind;
+    phone?: string;
+    name?: string;
+    email?: string;
+  };
+
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Google sign-in failed.");
+  }
+
+  return payload;
+}
+
+function loadGoogleScript() {
+  const existing = document.querySelector<HTMLScriptElement>("script[data-google-gsi]");
+  if (existing) {
+    return existing;
+  }
+
+  const script = document.createElement("script");
+  script.src = "https://accounts.google.com/gsi/client";
+  script.async = true;
+  script.defer = true;
+  script.dataset.googleGsi = "true";
+  document.head.appendChild(script);
+  return script;
+}
+
 export function GoogleSignInButton({
   disabled,
   onCredential,
+  onError,
+  label = "Continue with Google",
 }: {
   disabled?: boolean;
   onCredential: (credential: string) => void;
+  onError?: (message: string) => void;
+  label?: string;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const callbackRef = useRef(onCredential);
+  const errorRef = useRef(onError);
   callbackRef.current = onCredential;
+  errorRef.current = onError;
+  const [scriptReady, setScriptReady] = useState(false);
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) {
       return;
     }
 
-    function render() {
-      const node = containerRef.current;
-      if (!node || !window.google?.accounts.id) {
+    function init() {
+      if (!window.google?.accounts.id) {
         return;
       }
 
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
+        ux_mode: "popup",
+        auto_select: false,
+        cancel_on_tap_outside: true,
         callback: (response) => {
           if (response.credential) {
             callbackRef.current(response.credential);
           }
         },
       });
-      node.innerHTML = "";
-      window.google.accounts.id.renderButton(node, {
-        type: "standard",
-        theme: "outline",
-        size: "large",
-        text: "continue_with",
-        shape: "pill",
-        width: Math.min(Math.max(node.offsetWidth, 240), 400),
-      });
+      setScriptReady(true);
     }
 
+    const script = loadGoogleScript();
     if (window.google?.accounts.id) {
-      render();
+      init();
       return;
     }
 
-    const existing = document.querySelector<HTMLScriptElement>("script[data-google-gsi]");
-    if (existing) {
-      existing.addEventListener("load", render);
-      return () => existing.removeEventListener("load", render);
-    }
-
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.dataset.googleGsi = "true";
-    script.addEventListener("load", render);
-    document.head.appendChild(script);
-    return () => script.removeEventListener("load", render);
+    script.addEventListener("load", init);
+    return () => script.removeEventListener("load", init);
   }, []);
 
-  if (!GOOGLE_CLIENT_ID) {
-    return null;
+  function handleClick() {
+    if (disabled) {
+      return;
+    }
+
+    if (!GOOGLE_CLIENT_ID) {
+      errorRef.current?.(
+        "Google sign-in is not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID in .env.local and restart the app.",
+      );
+      return;
+    }
+
+    if (!scriptReady || !window.google?.accounts.id) {
+      errorRef.current?.("Google is still loading. Try again in a moment.");
+      return;
+    }
+
+    window.google.accounts.id.prompt((notification) => {
+      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+        errorRef.current?.(
+          "Google did not open the account picker. Allow popups for this site, then try again.",
+        );
+      }
+    });
   }
 
   return (
-    <div className={disabled ? "pointer-events-none opacity-50" : undefined}>
-      <div ref={containerRef} className="flex min-h-11 justify-center overflow-hidden" />
-    </div>
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={handleClick}
+      className={buttonClassName("secondary", "h-12 w-full text-base")}
+    >
+      <Icon name="google" kit="brands" className="text-lg text-[#4285F4]" />
+      {label}
+    </button>
   );
 }
 

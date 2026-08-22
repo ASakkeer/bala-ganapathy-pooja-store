@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { GoogleSignInButton, googleSignInEnabled } from "@/components/auth/google-sign-in-button";
 import { PhoneField } from "@/components/auth/phone-field";
 import { PinSetupStep } from "@/components/auth/pin-setup-step";
 import { useActionProgress } from "@/components/progress/use-action-progress";
@@ -18,6 +17,7 @@ export function RegisterForm({
   initialEmail,
   phoneLocked,
   emailLocked,
+  fromGoogle = false,
   startOnPin = false,
 }: {
   nextPath: string;
@@ -26,6 +26,7 @@ export function RegisterForm({
   initialEmail: string;
   phoneLocked: boolean;
   emailLocked: boolean;
+  fromGoogle?: boolean;
   startOnPin?: boolean;
 }) {
   const progress = useActionProgress();
@@ -83,7 +84,12 @@ export function RegisterForm({
         credentials: "same-origin",
         body: JSON.stringify({ phone: normalized, name: name.trim(), email: email.trim() }),
       });
-      const payload = (await response.json()) as { error?: string; needsPinLogin?: boolean; phone?: string };
+      const payload = (await response.json()) as {
+        error?: string;
+        needsPinLogin?: boolean;
+        signedIn?: boolean;
+        phone?: string;
+      };
 
       if (!response.ok) {
         const message = payload.error ?? "Could not save your details.";
@@ -94,6 +100,12 @@ export function RegisterForm({
 
       if (payload.phone) {
         setPhone(payload.phone);
+      }
+
+      if (payload.signedIn) {
+        progress.succeed("Signed in.", { keep: true });
+        window.location.replace(destination);
+        return;
       }
 
       if (payload.needsPinLogin) {
@@ -150,56 +162,6 @@ export function RegisterForm({
     }
   }
 
-  async function submitGoogle(credential: string) {
-    if (pending || progress.pending) {
-      return;
-    }
-
-    setPending(true);
-    progress.begin();
-    setError("");
-
-    try {
-      const response = await fetch("/api/auth/google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ credential }),
-      });
-      const payload = (await response.json()) as {
-        error?: string;
-        kind?: string;
-      };
-
-      if (!response.ok) {
-        const message = payload.error ?? "Google sign-in failed.";
-        setError(message);
-        progress.fail(message);
-        return;
-      }
-
-      if (payload.kind === "session") {
-        progress.succeed("Signed in.", { keep: true });
-        window.location.replace(destination);
-        return;
-      }
-
-      if (payload.kind === "link-pin") {
-        progress.succeed("Enter your PIN to finish.");
-        window.location.assign(`/login?next=${encodeURIComponent(destination)}`);
-        return;
-      }
-
-      window.location.reload();
-    } catch {
-      const message = "Google sign-in failed. Please try again.";
-      setError(message);
-      progress.fail(message);
-    } finally {
-      setPending(false);
-    }
-  }
-
   if (step === "pin") {
     return (
       <PinSetupStep
@@ -217,10 +179,16 @@ export function RegisterForm({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <p className="text-xs tracking-[0.18em] uppercase text-muted">Step 1 of 2</p>
-        <h2 className="mt-3 font-serif text-3xl font-medium tracking-tight">Create your account</h2>
+        <p className="text-xs tracking-[0.18em] uppercase text-muted">
+          {fromGoogle ? "Google account" : "Step 1 of 2"}
+        </p>
+        <h2 className="mt-3 font-serif text-3xl font-medium tracking-tight">
+          {fromGoogle ? "Add your mobile number" : "Create your account"}
+        </h2>
         <p className="mt-3 text-base leading-relaxed text-muted">
-          Name is required. Email is optional. Next you will choose a 4-digit PIN to sign in.
+          {fromGoogle
+            ? "Mobile number is required for orders. Email comes from Google and cannot be changed here. If this number is already registered, you will be signed in without a PIN."
+            : "Name is required. Email is optional. Next you will choose a 4-digit PIN to sign in."}
         </p>
       </div>
       <form
@@ -259,7 +227,9 @@ export function RegisterForm({
           />
         </label>
         <label className="flex flex-col gap-2">
-          <span className="text-sm font-medium text-text">Email {emailLocked ? "" : "(optional)"}</span>
+          <span className="text-sm font-medium text-text">
+            Email {fromGoogle || emailLocked ? "" : "(optional)"}
+          </span>
           <Input
             id="register-email"
             name="email"
@@ -268,27 +238,20 @@ export function RegisterForm({
             onChange={(event) => setEmail(event.target.value)}
             autoComplete="email"
             inputMode="email"
-            placeholder="Optional"
-            disabled={emailLocked}
-            readOnly={emailLocked}
+            placeholder={fromGoogle || emailLocked ? "From Google" : "Optional"}
+            disabled={fromGoogle || emailLocked}
+            readOnly={fromGoogle || emailLocked}
+            required={fromGoogle || emailLocked}
           />
+          {fromGoogle || emailLocked ? (
+            <p className="px-1 text-sm text-muted">This email comes from Google and cannot be edited.</p>
+          ) : null}
         </label>
         {error ? <p className="text-sm text-danger">{error}</p> : null}
         <Button type="submit" disabled={pending || progress.pending} className="h-12 w-full text-base">
           {pending ? "Please wait…" : "Continue"}
         </Button>
       </form>
-
-      {googleSignInEnabled() && !emailLocked ? (
-        <>
-          <div className="flex items-center gap-3 text-xs tracking-[0.16em] uppercase text-muted">
-            <span className="h-px flex-1 bg-border" />
-            or
-            <span className="h-px flex-1 bg-border" />
-          </div>
-          <GoogleSignInButton disabled={pending} onCredential={(credential) => void submitGoogle(credential)} />
-        </>
-      ) : null}
 
       <p className="text-sm text-muted">
         Already have an account?{" "}

@@ -50,7 +50,7 @@ Copy `.env.example` to `.env.local`. Validated in `src/server/env.ts`.
 
 PIN is stored as a one-way scrypt hash with a pepper from `AUTH_SECRET`. It is never logged. Production does not use SMS OTP.
 
-Google sign-in verifies the ID token on the server. New Google users still add an Indian mobile and set a PIN. Existing accounts with the same verified email must enter their PIN to link Google.
+Google sign-in verifies the ID token on the server. Existing accounts (matched by Google id or verified email) are signed in without a PIN. New Google users still add an Indian mobile, then set a PIN so they can also sign in with the number.
 
 ## Database
 

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { GoogleSignInButton, googleSignInEnabled } from "@/components/auth/google-sign-in-button";
 import { PhoneField } from "@/components/auth/phone-field";
 import { PinInput } from "@/components/auth/pin-input";
 import { Button } from "@/components/ui/button";
@@ -141,59 +140,6 @@ export function LoginForm({
     }
   }
 
-  async function submitGoogle(credential: string) {
-    if (pending || progress.pending) {
-      return;
-    }
-
-    setPending(true);
-    progress.begin();
-    setError("");
-
-    try {
-      const response = await fetch("/api/auth/google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ credential }),
-      });
-      const payload = (await response.json()) as {
-        error?: string;
-        kind?: "session" | "link-pin" | "register";
-        phone?: string;
-      };
-
-      if (!response.ok) {
-        const message = payload.error ?? "Google sign-in failed.";
-        setError(message);
-        progress.fail(message);
-        return;
-      }
-
-      if (payload.kind === "session") {
-        finish();
-        return;
-      }
-
-      if (payload.kind === "link-pin" && payload.phone) {
-        setPhone(payload.phone);
-        setStep("pin");
-        setPin(Array(PIN_LENGTH).fill(""));
-        progress.succeed("Enter your PIN to link Google.");
-        return;
-      }
-
-      progress.succeed("Finish creating your account.");
-      window.location.assign(`/register?next=${encodeURIComponent(destination)}`);
-    } catch {
-      const message = "Google sign-in failed. Please try again.";
-      setError(message);
-      progress.fail(message);
-    } finally {
-      setPending(false);
-    }
-  }
-
   return (
     <div className="flex flex-col gap-6">
       <form
@@ -278,24 +224,12 @@ export function LoginForm({
       </form>
 
       {step === "phone" ? (
-        <>
-          {googleSignInEnabled() ? (
-            <>
-              <div className="flex items-center gap-3 text-xs tracking-[0.16em] uppercase text-muted">
-                <span className="h-px flex-1 bg-border" />
-                or
-                <span className="h-px flex-1 bg-border" />
-              </div>
-              <GoogleSignInButton disabled={pending} onCredential={(credential) => void submitGoogle(credential)} />
-            </>
-          ) : null}
-          <p className="text-sm leading-relaxed text-muted">
-            New here? Enter your number — we&apos;ll open registration if it is not on file.{" "}
-            <Link href={`/login/forgot?next=${encodeURIComponent(destination)}`} className="text-brand hover:underline">
-              Forgot PIN?
-            </Link>
-          </p>
-        </>
+        <p className="text-sm leading-relaxed text-muted">
+          New here? Enter your number — we&apos;ll open registration if it is not on file.{" "}
+          <Link href={`/login/forgot?next=${encodeURIComponent(destination)}`} className="text-brand hover:underline">
+            Forgot PIN?
+          </Link>
+        </p>
       ) : null}
     </div>
   );

@@ -31,10 +31,16 @@ export default async function RegisterPage({
     redirect(`/login?next=${encodeURIComponent(nextPath)}`);
   }
 
+  const fromGoogle = Boolean(intent.googleSub);
+
   return (
     <AuthShell
-      heroTitle="A few details, then your PIN."
-      heroBody="The mobile number is how we find your orders. Address and pincode are collected at checkout, not here."
+      heroTitle={fromGoogle ? "Add your mobile number." : "A few details, then your PIN."}
+      heroBody={
+        fromGoogle
+          ? "Email comes from Google. Mobile is required for orders. If this number is already registered, you are signed in without a PIN."
+          : "The mobile number is how we find your orders. Address and pincode are collected at checkout, not here."
+      }
     >
       <RegisterForm
         nextPath={nextPath}
@@ -42,7 +48,8 @@ export default async function RegisterPage({
         initialName={isPlaceholderProfileName(intent.name ?? "") ? "" : (intent.name ?? "")}
         initialEmail={intent.email ?? intent.googleEmail ?? ""}
         phoneLocked={Boolean(intent.phone)}
-        emailLocked={Boolean(intent.googleEmail)}
+        emailLocked={fromGoogle || Boolean(intent.googleEmail)}
+        fromGoogle={fromGoogle}
         startOnPin={intent.stage === "set-pin"}
       />
     </AuthShell>

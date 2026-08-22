@@ -33,7 +33,7 @@ export default async function LoginPage({
       heading="Continue with your phone"
       description={returnCopy(nextPath)}
       heroTitle="Sign in to add items, save your address, and order."
-      heroBody="You can browse the catalog without an account. Use your mobile number and a 4-digit PIN, or Google if you have linked it."
+      heroBody="You can browse the catalog without an account. Sign in with your mobile number and a 4-digit PIN."
     >
       <LoginForm
         nextPath={nextPath}

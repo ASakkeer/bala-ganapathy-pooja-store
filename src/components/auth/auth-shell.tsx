@@ -10,12 +10,14 @@ export function AuthShell({
   description,
   heroTitle,
   heroBody,
+  after,
   children,
 }: {
   heading?: string;
   description?: string;
   heroTitle: string;
   heroBody: string;
+  after?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -40,7 +42,7 @@ export function AuthShell({
           </div>
         </aside>
 
-        <div className="mx-auto flex w-full max-w-md flex-col justify-center gap-8 px-5 py-8 sm:px-10 sm:py-12">
+        <div className="mx-auto flex w-full max-w-md flex-col justify-center gap-8 overflow-y-auto px-5 py-8 sm:px-10 sm:py-12">
           <StoreLogo size="login" />
           {heading || description ? (
             <div>
@@ -53,6 +55,7 @@ export function AuthShell({
             </div>
           ) : null}
           {children}
+          {after}
           <Link href="/shop" className="text-sm text-muted hover:text-brand">
             Keep browsing the catalog
           </Link>

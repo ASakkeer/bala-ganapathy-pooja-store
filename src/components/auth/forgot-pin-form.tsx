@@ -107,15 +107,6 @@ export function ForgotPinForm({ nextPath }: { nextPath: string }) {
             <>
               <p>We cannot send an SMS reset. Call the shop with this number. They can clear your PIN so you can create a new one the next time you sign in.</p>
               {result.emailMasked ? <p className="mt-2">This account has email {result.emailMasked} on file.</p> : null}
-              {result.hasGoogle ? (
-                <p className="mt-2">
-                  This number is linked to Google.{" "}
-                  <Link href={`/login?next=${encodeURIComponent(destination)}`} className="text-brand hover:underline">
-                    Sign in with Google
-                  </Link>
-                  .
-                </p>
-              ) : null}
             </>
           ) : (
             <p>
@@ -129,7 +120,7 @@ export function ForgotPinForm({ nextPath }: { nextPath: string }) {
         </div>
       ) : (
         <p className="text-sm leading-relaxed text-muted">
-          PIN reset is done by the shop, not by SMS. If you linked Google, you can also sign in that way.
+          PIN reset is done by the shop, not by SMS.
         </p>
       )}
 
