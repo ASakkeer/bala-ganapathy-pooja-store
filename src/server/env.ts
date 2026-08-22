@@ -23,8 +23,17 @@ const envSchema = z.object({
   RAZORPAY_WEBHOOK_SECRET: optionalNonEmptyString,
   AUTH_SECRET: optionalNonEmptyString,
   ADMIN_PHONE: optionalNonEmptyString,
+  ADMIN_PIN: z.preprocess((value) => {
+    if (typeof value !== "string") {
+      return undefined;
+    }
+
+    const digits = value.replace(/\D/g, "");
+    return digits === "" ? undefined : digits;
+  }, z.string().regex(/^\d{4}$/, "ADMIN_PIN must be 4 digits.").optional()),
   NEXT_PUBLIC_RAZORPAY_KEY_ID: optionalNonEmptyString,
   NEXT_PUBLIC_SITE_URL: optionalNonEmptyString,
+  NEXT_PUBLIC_GOOGLE_CLIENT_ID: optionalNonEmptyString,
 });
 
 const parsedEnv = envSchema.safeParse({
@@ -34,8 +43,10 @@ const parsedEnv = envSchema.safeParse({
   RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET,
   AUTH_SECRET: process.env.AUTH_SECRET,
   ADMIN_PHONE: process.env.ADMIN_PHONE,
+  ADMIN_PIN: process.env.ADMIN_PIN,
   NEXT_PUBLIC_RAZORPAY_KEY_ID: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+  NEXT_PUBLIC_GOOGLE_CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
 });
 
 if (!parsedEnv.success) {

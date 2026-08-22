@@ -53,6 +53,10 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   email: text("email"),
   role: userRoleEnum("role").default("customer").notNull(),
+  pinHash: text("pin_hash"),
+  pinFailedAttempts: integer("pin_failed_attempts").default(0).notNull(),
+  pinLockedUntil: timestamp("pin_locked_until", { withTimezone: true }),
+  googleSub: text("google_sub").unique(),
   createdAt: timestamps.createdAt,
 });
 

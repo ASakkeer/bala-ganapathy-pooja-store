@@ -106,7 +106,7 @@ export function ProfileForm({
             placeholder="Optional"
           />
         </label>
-        <p className="pb-2 text-sm text-muted">The mobile number is used to sign in and cannot be changed here.</p>
+        <p className="pb-2 text-sm text-muted">The mobile number is used to sign in with your PIN and cannot be changed here.</p>
         {error ? <p className="pb-3 text-sm text-danger">{error}</p> : null}
       </div>
       <div className="flex flex-col gap-3 border-t border-border/80 px-5 py-4 sm:flex-row sm:px-6">

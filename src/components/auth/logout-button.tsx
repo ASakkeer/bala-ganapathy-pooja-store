@@ -49,7 +49,7 @@ export function LogoutButton({
       <ConfirmDialog
         open={open}
         title="Sign out?"
-        description="You'll need your mobile number to sign in again. Your cart stays on this device after you return."
+        description="You'll need your mobile number and PIN to sign in again. Your cart stays on this device after you return."
         confirmLabel="Sign out"
         tone="brand"
         pending={pending || progress.pending}

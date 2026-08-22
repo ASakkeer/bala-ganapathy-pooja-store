@@ -80,7 +80,7 @@ export default async function AboutPage() {
         <h2 className="font-serif text-2xl font-medium tracking-tight">How buying works</h2>
         <p className="mt-3 text-base leading-relaxed text-muted">
           You can browse without an account. Adding to cart, saving an address, and checkout need
-          a phone OTP login. Payment, when enabled, is through Razorpay — we never take card
+          a mobile number and PIN (or Google). Payment, when enabled, is through Razorpay — we never take card
           numbers on this site.
         </p>
       </section>

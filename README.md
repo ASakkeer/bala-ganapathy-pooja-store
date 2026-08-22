@@ -14,7 +14,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Without `DATABASE_URL` the demo catalog, cookie cart, and cookie orders still run. Set `ADMIN_PHONE` to a 10-digit Indian mobile, request an OTP on `/login`, and use the code printed in the **server terminal** (`[otp] …`). That number opens `/admin`.
+Without `DATABASE_URL` the demo catalog, cookie cart, and cookie orders still run. Set `ADMIN_PHONE` to a 10-digit Indian mobile. Sign in on `/login` with that number and a 4-digit PIN. If the admin user has no PIN yet, set `ADMIN_PIN` in `.env.local` to the same 4 digits, sign in once, then remove `ADMIN_PIN`. That number opens `/admin`.
 
 ## Scripts
 
@@ -38,15 +38,19 @@ Copy `.env.example` to `.env.local`. Validated in `src/server/env.ts`.
 | Key | Used for |
 | --- | --- |
 | `DATABASE_URL` | Postgres. Optional in local demo; required to persist catalog/orders. |
-| `AUTH_SECRET` | Session HMAC. Required in production. |
-| `ADMIN_PHONE` | 10-digit number that receives the admin role after OTP. |
+| `AUTH_SECRET` | Session HMAC and PIN pepper. Required in production. |
+| `ADMIN_PHONE` | 10-digit number that receives the admin role after PIN sign-in. |
+| `ADMIN_PIN` | Optional one-time 4-digit bootstrap if the admin row has no PIN yet. Remove after first sign-in. |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Google Identity client id for “Continue with Google”. Optional. |
 | `RAZORPAY_KEY_ID` | Razorpay test/live key id (server). |
 | `RAZORPAY_KEY_SECRET` | Razorpay secret. Never `NEXT_PUBLIC_`. |
 | `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Same id as `RAZORPAY_KEY_ID` for Checkout.js. |
 | `RAZORPAY_WEBHOOK_SECRET` | Webhook signature. Source of truth for captured payments. |
 | `NEXT_PUBLIC_SITE_URL` | Canonical origin, sitemap, Open Graph. |
 
-OTP is **not** sent by SMS. In development the code is logged to the server console. Production login returns 503 until an SMS provider is wired — do not log OTP in production.
+PIN is stored as a one-way scrypt hash with a pepper from `AUTH_SECRET`. It is never logged. Production does not use SMS OTP.
+
+Google sign-in verifies the ID token on the server. New Google users still add an Indian mobile and set a PIN. Existing accounts with the same verified email must enter their PIN to link Google.
 
 ## Database
 

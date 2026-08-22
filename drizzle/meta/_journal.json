@@ -50,6 +50,13 @@
       "when": 1787318000000,
       "tag": "0006_order_tracking",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787400000000,
+      "tag": "0007_user_auth_pin",
+      "breakpoints": true
     }
   ]
 }

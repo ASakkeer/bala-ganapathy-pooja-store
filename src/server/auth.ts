@@ -1,27 +1,45 @@
 import "server-only";
 
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { cache } from "react";
-import { createHash, randomInt } from "crypto";
-import { normalizeIndianPhone } from "@/lib/phone";
+import { z } from "zod";
 import {
-  getAuthSecret,
-  SESSION_COOKIE,
-  signSession,
-  verifySession,
-  type SessionPayload,
-} from "@/lib/session";
+  AUTH_INTENT_COOKIE,
+  signAuthIntent,
+  verifyAuthIntent,
+  type AuthIntent,
+} from "@/lib/auth-intent";
+import { maskEmail, normalizeIndianPhone } from "@/lib/phone";
+import { confirmPinError, pinError } from "@/lib/pin";
+import { PLACEHOLDER_PROFILE_NAME } from "@/lib/profile-cookie";
+import { SESSION_COOKIE, signSession, verifySession, type SessionPayload } from "@/lib/session";
 import { mergeGuestCartForUser } from "@/server/cart";
 import { getDb } from "@/server/db";
 import { users } from "@/server/db/schema";
 import { env, isDatabaseConfigured } from "@/server/env";
+import { isGoogleAuthConfigured, verifyGoogleIdToken } from "@/server/google-auth";
+import { hashPin, verifyPinHash } from "@/server/pin";
 
-const OTP_TTL_MS = 5 * 60 * 1000;
-const MAX_ATTEMPTS = 5;
-const SEND_WINDOW_MS = 15 * 60 * 1000;
-const MAX_SENDS_PER_PHONE = 5;
-const MAX_SENDS_PER_IP = 10;
+const registerDetailsSchema = z.object({
+  name: z.string().trim().min(2, "Enter your name.").max(80),
+  email: z
+    .string()
+    .trim()
+    .max(120)
+    .refine((value) => value === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), {
+      message: "Enter a valid email, or leave it blank.",
+    })
+    .optional(),
+});
+
+const LOOKUP_WINDOW_MS = 15 * 60 * 1000;
+const MAX_LOOKUPS_PER_PHONE = 10;
+const MAX_LOOKUPS_PER_IP = 30;
+const MAX_PIN_ATTEMPTS = 5;
+const PIN_LOCK_MS = 15 * 60 * 1000;
+const MAX_PIN_PER_IP = 20;
+const MAX_GOOGLE_PER_IP = 20;
 
 export class AuthError extends Error {
   constructor(
@@ -33,19 +51,21 @@ export class AuthError extends Error {
   }
 }
 
-type OtpRecord = {
+type StoredUser = {
+  id: string;
   phone: string;
-  codeHash: string;
-  expiresAt: number;
-  attempts: number;
+  name: string;
+  email: string | null;
+  role: "customer" | "admin";
+  pinHash: string | null;
+  pinFailedAttempts: number;
+  pinLockedUntil: Date | null;
+  googleSub: string | null;
 };
 
-const otpByPhone = new Map<string, OtpRecord>();
+const memoryUsers = new Map<string, StoredUser>();
 const sendHits = new Map<string, number[]>();
-
-function hashOtp(phone: string, code: string) {
-  return createHash("sha256").update(`${phone}:${code}:${getAuthSecret()}`).digest("hex");
-}
+let dummyPinHash: string | null = null;
 
 function allowHit(key: string, windowMs: number, max: number) {
   const now = Date.now();
@@ -69,6 +89,11 @@ function clientIp(headers: Headers) {
   return headers.get("x-real-ip")?.trim() || "local";
 }
 
+async function dummyHash() {
+  dummyPinHash ??= await hashPin("0000");
+  return dummyPinHash;
+}
+
 export function requirePhone(raw: string) {
   const phone = normalizeIndianPhone(raw);
   if (!phone) {
@@ -77,107 +102,500 @@ export function requirePhone(raw: string) {
   return phone;
 }
 
-export async function sendOtp(rawPhone: string, headers: Headers) {
-  const phone = requirePhone(rawPhone);
-  const ip = clientIp(headers);
-
-  if (!allowHit(`phone:${phone}`, SEND_WINDOW_MS, MAX_SENDS_PER_PHONE)) {
-    throw new AuthError("Too many OTP requests for this number. Try later.", 429);
+function requirePin(raw: string) {
+  const error = pinError(raw);
+  if (error) {
+    throw new AuthError(error, 400);
   }
-
-  if (!allowHit(`ip:${ip}`, SEND_WINDOW_MS, MAX_SENDS_PER_IP)) {
-    throw new AuthError("Too many OTP requests. Try later.", 429);
-  }
-
-  if (process.env.NODE_ENV === "production") {
-    throw new AuthError("SMS is not configured yet. Login cannot send OTP in production.", 503);
-  }
-
-  const code = String(randomInt(100000, 1000000));
-  otpByPhone.set(phone, {
-    phone,
-    codeHash: hashOtp(phone, code),
-    expiresAt: Date.now() + OTP_TTL_MS,
-    attempts: 0,
-  });
-
-  console.info(`[otp] ${phone} ${code}`);
-  return { phone, expiresInSeconds: OTP_TTL_MS / 1000 };
+  return raw.replace(/\D/g, "");
 }
 
-async function upsertUser(phone: string): Promise<{ id: string; phone: string; role: "customer" | "admin" }> {
-  const role = isAdminPhone(phone) ? "admin" : "customer";
+function normalizeEmail(raw?: string | null) {
+  const value = raw?.trim().toLowerCase() ?? "";
+  return value || null;
+}
+
+function roleForPhone(phone: string): "customer" | "admin" {
+  return isAdminPhone(phone) ? "admin" : "customer";
+}
+
+function fromRow(row: typeof users.$inferSelect): StoredUser {
+  return {
+    id: row.id,
+    phone: row.phone,
+    name: row.name,
+    email: row.email,
+    role: row.role,
+    pinHash: row.pinHash,
+    pinFailedAttempts: row.pinFailedAttempts,
+    pinLockedUntil: row.pinLockedUntil,
+    googleSub: row.googleSub,
+  };
+}
+
+async function findUserByPhone(phone: string): Promise<StoredUser | null> {
+  const memory = [...memoryUsers.values()].find((user) => user.phone === phone);
+  if (!isDatabaseConfigured()) {
+    return memory ?? null;
+  }
+
+  try {
+    const db = getDb();
+    const row = await db.query.users.findFirst({
+      where: eq(users.phone, phone),
+    });
+    return row ? fromRow(row) : memory ?? null;
+  } catch {
+    return memory ?? null;
+  }
+}
+
+async function findUserByGoogleSub(sub: string): Promise<StoredUser | null> {
+  const memory = [...memoryUsers.values()].find((user) => user.googleSub === sub);
+  if (!isDatabaseConfigured()) {
+    return memory ?? null;
+  }
+
+  try {
+    const db = getDb();
+    const row = await db.query.users.findFirst({
+      where: eq(users.googleSub, sub),
+    });
+    return row ? fromRow(row) : memory ?? null;
+  } catch {
+    return memory ?? null;
+  }
+}
+
+async function findUserByEmail(email: string): Promise<StoredUser | null> {
+  const needle = email.toLowerCase();
+  const memory = [...memoryUsers.values()].find((user) => user.email?.toLowerCase() === needle);
+  if (!isDatabaseConfigured()) {
+    return memory ?? null;
+  }
+
+  try {
+    const db = getDb();
+    const row = await db.query.users.findFirst({
+      where: sql`lower(${users.email}) = ${needle}`,
+    });
+    return row ? fromRow(row) : memory ?? null;
+  } catch {
+    return memory ?? null;
+  }
+}
+
+function remember(user: StoredUser) {
+  memoryUsers.set(user.id, user);
+  return user;
+}
+
+async function persistUser(user: StoredUser) {
+  remember(user);
 
   if (!isDatabaseConfigured()) {
-    return { id: `user-${phone}`, phone, role };
+    return user;
   }
 
   try {
     const db = getDb();
     const existing = await db.query.users.findFirst({
-      where: eq(users.phone, phone),
+      where: eq(users.id, user.id),
     });
 
     if (existing) {
-      if (role === "admin" && existing.role !== "admin") {
-        const [updated] = await db
-          .update(users)
-          .set({ role: "admin" })
-          .where(eq(users.id, existing.id))
-          .returning();
-        return { id: updated.id, phone: updated.phone, role: updated.role };
-      }
-
-      return { id: existing.id, phone: existing.phone, role: existing.role };
+      const [updated] = await db
+        .update(users)
+        .set({
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          pinHash: user.pinHash,
+          pinFailedAttempts: user.pinFailedAttempts,
+          pinLockedUntil: user.pinLockedUntil,
+          googleSub: user.googleSub,
+        })
+        .where(eq(users.id, user.id))
+        .returning();
+      return remember(fromRow(updated));
     }
 
     const [created] = await db
       .insert(users)
-      .values({ phone, name: "Customer", role })
+      .values({
+        id: user.id,
+        phone: user.phone,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        pinHash: user.pinHash,
+        pinFailedAttempts: user.pinFailedAttempts,
+        pinLockedUntil: user.pinLockedUntil,
+        googleSub: user.googleSub,
+      })
       .returning();
-
-    return { id: created.id, phone: created.phone, role: created.role };
-  } catch {
-    return { id: `user-${phone}`, phone, role };
+    return remember(fromRow(created));
+  } catch (error) {
+    if (!memoryUsers.has(user.id)) {
+      throw error;
+    }
+    return user;
   }
 }
 
-export async function verifyOtp(rawPhone: string, code: string) {
-  const phone = requirePhone(rawPhone);
-  const trimmed = code.trim();
+async function createUser(input: {
+  phone: string;
+  name: string;
+  email: string | null;
+  pinHash: string;
+  googleSub?: string | null;
+}): Promise<StoredUser> {
+  const role = roleForPhone(input.phone);
+  const draft: StoredUser = {
+    id: crypto.randomUUID(),
+    phone: input.phone,
+    name: input.name,
+    email: input.email,
+    role,
+    pinHash: input.pinHash,
+    pinFailedAttempts: 0,
+    pinLockedUntil: null,
+    googleSub: input.googleSub ?? null,
+  };
 
-  if (!/^\d{6}$/.test(trimmed)) {
-    throw new AuthError("Enter the 6-digit code.", 400);
+  if (!isDatabaseConfigured()) {
+    return remember(draft);
   }
 
-  const record = otpByPhone.get(phone);
+  try {
+    const db = getDb();
+    const [created] = await db
+      .insert(users)
+      .values({
+        phone: draft.phone,
+        name: draft.name,
+        email: draft.email,
+        role: draft.role,
+        pinHash: draft.pinHash,
+        pinFailedAttempts: 0,
+        googleSub: draft.googleSub,
+      })
+      .returning();
+    return remember(fromRow(created));
+  } catch {
+    const again = await findUserByPhone(input.phone);
+    if (again?.pinHash) {
+      throw new AuthError("This number already has an account. Sign in with your PIN.", 409);
+    }
+    return remember(draft);
+  }
+}
 
-  if (!record || record.expiresAt < Date.now()) {
-    otpByPhone.delete(phone);
-    throw new AuthError("That code has expired. Request a new one.", 400);
+async function issueSession(user: StoredUser) {
+  const role = roleForPhone(user.phone);
+  if (role === "admin" && user.role !== "admin") {
+    user = await persistUser({ ...user, role: "admin" });
   }
 
-  record.attempts += 1;
-
-  if (record.attempts > MAX_ATTEMPTS) {
-    otpByPhone.delete(phone);
-    throw new AuthError("Too many attempts. Request a new code.", 429);
-  }
-
-  if (record.codeHash !== hashOtp(phone, trimmed)) {
-    throw new AuthError("That code is not correct.", 400);
-  }
-
-  otpByPhone.delete(phone);
-  const user = await upsertUser(phone);
   await mergeGuestCartForUser(user.id);
   const token = await signSession({
     userId: user.id,
     phone: user.phone,
     role: user.role,
   });
-
   return { token, user };
+}
+
+export async function readAuthIntent(): Promise<AuthIntent | null> {
+  return verifyAuthIntent((await cookies()).get(AUTH_INTENT_COOKIE)?.value);
+}
+
+export async function writeAuthIntent(input: Omit<AuthIntent, "exp">) {
+  return signAuthIntent(input);
+}
+
+function rateLimitOrThrow(key: string, windowMs: number, max: number, message: string) {
+  if (!allowHit(key, windowMs, max)) {
+    throw new AuthError(message, 429);
+  }
+}
+
+export async function lookupPhone(rawPhone: string, headers: Headers) {
+  const phone = requirePhone(rawPhone);
+  const ip = clientIp(headers);
+  rateLimitOrThrow(`lookup:phone:${phone}`, LOOKUP_WINDOW_MS, MAX_LOOKUPS_PER_PHONE, "Too many tries for this number. Wait and try again.");
+  rateLimitOrThrow(`lookup:ip:${ip}`, LOOKUP_WINDOW_MS, MAX_LOOKUPS_PER_IP, "Too many tries. Wait and try again.");
+
+  const user = await findUserByPhone(phone);
+  const exists = Boolean(user);
+  const hasPin = Boolean(user?.pinHash);
+
+  const intentToken = await writeAuthIntent({
+    phone,
+    stage: exists ? (hasPin ? "pin" : "phone") : "register",
+  });
+
+  return {
+    phone,
+    exists,
+    hasPin,
+    intentToken,
+  };
+}
+
+async function verifyExistingPin(user: StoredUser, pin: string) {
+  if (user.pinLockedUntil && user.pinLockedUntil.getTime() > Date.now()) {
+    throw new AuthError("Too many incorrect PINs. Try again after 15 minutes, or reset your PIN.", 429);
+  }
+
+  let ok = false;
+  if (user.pinHash) {
+    ok = await verifyPinHash(pin, user.pinHash);
+  } else if (isAdminPhone(user.phone) && env.ADMIN_PIN && pin === env.ADMIN_PIN) {
+    ok = true;
+  } else {
+    await verifyPinHash(pin, await dummyHash());
+  }
+
+  if (!ok) {
+    const attempts = user.pinFailedAttempts + 1;
+    const locked = attempts >= MAX_PIN_ATTEMPTS ? new Date(Date.now() + PIN_LOCK_MS) : user.pinLockedUntil;
+    await persistUser({
+      ...user,
+      pinFailedAttempts: attempts,
+      pinLockedUntil: locked ?? null,
+    });
+    if (locked && attempts >= MAX_PIN_ATTEMPTS) {
+      throw new AuthError("Too many incorrect PINs. Try again after 15 minutes, or reset your PIN.", 429);
+    }
+    throw new AuthError("That PIN is not correct.", 400);
+  }
+
+  let next = user;
+  if (!user.pinHash) {
+    next = { ...next, pinHash: await hashPin(pin) };
+  }
+
+  return persistUser({
+    ...next,
+    pinFailedAttempts: 0,
+    pinLockedUntil: null,
+  });
+}
+
+export async function loginWithPin(rawPhone: string, rawPin: string, headers: Headers) {
+  const phone = requirePhone(rawPhone);
+  const pin = rawPin.replace(/\D/g, "");
+  if (!/^\d{4}$/.test(pin)) {
+    throw new AuthError("Enter your 4-digit PIN.", 400);
+  }
+
+  const ip = clientIp(headers);
+  rateLimitOrThrow(`pin:ip:${ip}`, LOOKUP_WINDOW_MS, MAX_PIN_PER_IP, "Too many PIN tries. Wait and try again.");
+  rateLimitOrThrow(`pin:phone:${phone}`, LOOKUP_WINDOW_MS, MAX_PIN_ATTEMPTS + 3, "Too many PIN tries for this number. Wait and try again.");
+
+  const intent = await readAuthIntent();
+  if (!intent?.phone || intent.phone !== phone) {
+    throw new AuthError("Enter your mobile number again.", 400);
+  }
+
+  const user = await findUserByPhone(phone);
+  if (!user) {
+    await verifyPinHash(pin, await dummyHash());
+    throw new AuthError("No account for this number. Create one to continue.", 404);
+  }
+
+  if (!user.pinHash && !(isAdminPhone(phone) && env.ADMIN_PIN)) {
+    throw new AuthError("This number needs a PIN reset. Sign in with Google if you linked it, or contact the shop.", 409);
+  }
+
+  const signedIn = await verifyExistingPin(user, pin);
+  if (intent.googleSub && signedIn.googleSub !== intent.googleSub) {
+    return issueSession(
+      await persistUser({
+        ...signedIn,
+        googleSub: intent.googleSub,
+        email: signedIn.email ?? intent.googleEmail ?? null,
+      }),
+    );
+  }
+
+  return issueSession(signedIn);
+}
+
+export async function saveRegistrationDetails(
+  input: { name?: string; email?: string; phone?: string },
+  headers: Headers,
+) {
+  const intent = await readAuthIntent();
+  if (!intent || (intent.stage !== "register" && intent.stage !== "set-pin" && intent.stage !== "google")) {
+    throw new AuthError("Enter your mobile number first.", 400);
+  }
+
+  const phone = intent.phone ?? (input.phone ? requirePhone(input.phone) : null);
+  if (!phone) {
+    throw new AuthError("Enter your 10-digit mobile number.", 400);
+  }
+
+  rateLimitOrThrow(
+    `register:ip:${clientIp(headers)}`,
+    LOOKUP_WINDOW_MS,
+    MAX_LOOKUPS_PER_IP,
+    "Too many tries. Wait and try again.",
+  );
+
+  const parsed = registerDetailsSchema.safeParse({
+    name: input.name ?? "",
+    email: input.email ?? "",
+  });
+  if (!parsed.success) {
+    throw new AuthError(parsed.error.issues[0]?.message ?? "Check your details and try again.", 400);
+  }
+
+  const existing = await findUserByPhone(phone);
+  if (existing?.pinHash) {
+    if (intent.googleSub) {
+      const intentToken = await writeAuthIntent({
+        phone,
+        name: existing.name,
+        email: existing.email,
+        googleSub: intent.googleSub,
+        googleEmail: intent.googleEmail,
+        stage: "pin",
+      });
+      return { phone, intentToken, needsPinLogin: true as const };
+    }
+    throw new AuthError("This number already has an account. Sign in with your PIN.", 409);
+  }
+
+  if (existing && !existing.pinHash) {
+    throw new AuthError("This number needs a PIN reset. Contact the shop, then try again.", 409);
+  }
+
+  const email = normalizeEmail(intent.googleEmail ?? parsed.data.email);
+  const intentToken = await writeAuthIntent({
+    phone,
+    name: parsed.data.name.trim(),
+    email,
+    googleSub: intent.googleSub,
+    googleEmail: intent.googleEmail ?? email ?? undefined,
+    stage: "set-pin",
+  });
+
+  return { phone, intentToken, needsPinLogin: false as const };
+}
+
+export async function setPinAndCreateAccount(rawPin: string, rawConfirm: string, headers: Headers) {
+  const mismatch = confirmPinError(rawPin, rawConfirm);
+  if (mismatch) {
+    throw new AuthError(mismatch, 400);
+  }
+  const pin = requirePin(rawPin);
+  rateLimitOrThrow(`setpin:ip:${clientIp(headers)}`, LOOKUP_WINDOW_MS, MAX_PIN_PER_IP, "Too many tries. Wait and try again.");
+
+  const intent = await readAuthIntent();
+  if (!intent?.phone || intent.stage !== "set-pin") {
+    throw new AuthError("Save your name first, then set a PIN.", 400);
+  }
+
+  const name = intent.name?.trim();
+  if (!name || name === PLACEHOLDER_PROFILE_NAME) {
+    throw new AuthError("Enter your name before setting a PIN.", 400);
+  }
+
+  const existing = await findUserByPhone(intent.phone);
+  if (existing?.pinHash) {
+    throw new AuthError("This number already has an account. Sign in with your PIN.", 409);
+  }
+
+  const pinHash = await hashPin(pin);
+
+  if (existing) {
+    const signedIn = await persistUser({
+      ...existing,
+      name,
+      email: intent.email ?? existing.email,
+      pinHash,
+      pinFailedAttempts: 0,
+      pinLockedUntil: null,
+      googleSub: intent.googleSub ?? existing.googleSub,
+    });
+    return issueSession(signedIn);
+  }
+
+  const created = await createUser({
+    phone: intent.phone,
+    name,
+    email: intent.email ?? null,
+    pinHash,
+    googleSub: intent.googleSub ?? null,
+  });
+  return issueSession(created);
+}
+
+export async function loginWithGoogle(credential: string, headers: Headers) {
+  if (!isGoogleAuthConfigured()) {
+    throw new AuthError("Google sign-in is not available yet.", 503);
+  }
+
+  if (!credential.trim()) {
+    throw new AuthError("Google sign-in was cancelled.", 400);
+  }
+
+  rateLimitOrThrow(`google:ip:${clientIp(headers)}`, LOOKUP_WINDOW_MS, MAX_GOOGLE_PER_IP, "Too many Google sign-in tries. Wait and try again.");
+
+  let profile;
+  try {
+    profile = await verifyGoogleIdToken(credential);
+  } catch {
+    throw new AuthError("Google sign-in could not be verified. Try again.", 401);
+  }
+
+  const bySub = await findUserByGoogleSub(profile.sub);
+  if (bySub) {
+    return { kind: "session" as const, ...(await issueSession(bySub)) };
+  }
+
+  const byEmail = profile.email ? await findUserByEmail(profile.email) : null;
+  if (byEmail?.pinHash) {
+    const intentToken = await writeAuthIntent({
+      phone: byEmail.phone,
+      name: byEmail.name,
+      email: byEmail.email,
+      googleSub: profile.sub,
+      googleEmail: profile.email,
+      stage: "pin",
+    });
+    return {
+      kind: "link-pin" as const,
+      phone: byEmail.phone,
+      intentToken,
+    };
+  }
+
+  const intentToken = await writeAuthIntent({
+    name: profile.name || undefined,
+    email: profile.email,
+    googleSub: profile.sub,
+    googleEmail: profile.email,
+    stage: "google",
+  });
+
+  return { kind: "register" as const, name: profile.name, email: profile.email, intentToken };
+}
+
+export async function forgotPinInfo(rawPhone: string, headers: Headers) {
+  const phone = requirePhone(rawPhone);
+  rateLimitOrThrow(`forgot:ip:${clientIp(headers)}`, LOOKUP_WINDOW_MS, MAX_LOOKUPS_PER_IP, "Too many tries. Wait and try again.");
+  rateLimitOrThrow(`forgot:phone:${phone}`, LOOKUP_WINDOW_MS, MAX_LOOKUPS_PER_PHONE, "Too many tries for this number. Wait and try again.");
+
+  const user = await findUserByPhone(phone);
+  return {
+    phone,
+    exists: Boolean(user),
+    hasGoogle: Boolean(user?.googleSub),
+    emailMasked: user?.email ? maskEmail(user.email) : null,
+  };
 }
 
 export const getSession = cache(async (): Promise<SessionPayload | null> => {

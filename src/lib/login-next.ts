@@ -1,6 +1,12 @@
 export function safeNextPath(raw?: string | null) {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/login")) {
-    return "/account";
+  if (
+    !raw ||
+    !raw.startsWith("/") ||
+    raw.startsWith("//") ||
+    raw.startsWith("/login") ||
+    raw.startsWith("/register")
+  ) {
+    return "/shop";
   }
 
   return raw;

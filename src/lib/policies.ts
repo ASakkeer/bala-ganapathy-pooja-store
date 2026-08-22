@@ -58,7 +58,7 @@ export const PRIVACY_SECTIONS: PolicySection[] = [
   {
     heading: "What we collect",
     paragraphs: [
-      `${STORE_NAME} collects a mobile number to send a one-time password and to find your orders. If you save an address, we store the name, phone, street, city, state, and pincode you enter.`,
+      `${STORE_NAME} collects a mobile number and a hashed 4-digit PIN to sign you in, and to find your orders. If you use Google, we store the Google account id and verified email. If you save an address, we store the name, phone, street, city, state, and pincode you enter.`,
       "Order lines, totals in paise, and payment status are stored so you can track the order. We do not ask for card numbers on this website.",
     ],
   },
@@ -93,7 +93,7 @@ export const TERMS_SECTIONS: PolicySection[] = [
   {
     heading: "Orders and payment",
     paragraphs: [
-      "Adding to cart, saving an address, and checkout require a phone OTP login. An order is created only after you confirm the saved address.",
+      "Adding to cart, saving an address, and checkout require signing in with your mobile number and PIN (or Google). An order is created only after you confirm the saved address.",
       "Payment is taken by Razorpay when the shop has enabled it. Until payment is confirmed, the order stays pending. Failed payments can be retried from the confirmation page.",
     ],
   },

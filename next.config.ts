@@ -85,6 +85,14 @@ const nextConfig: NextConfig = {
         source: "/login",
         headers: [{ key: "Cache-Control", value: PRIVATE_CACHE_CONTROL }],
       },
+      {
+        source: "/login/:path*",
+        headers: [{ key: "Cache-Control", value: PRIVATE_CACHE_CONTROL }],
+      },
+      {
+        source: "/register",
+        headers: [{ key: "Cache-Control", value: PRIVATE_CACHE_CONTROL }],
+      },
     ];
   },
   async redirects() {
