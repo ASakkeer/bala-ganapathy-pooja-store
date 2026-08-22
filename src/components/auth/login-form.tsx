@@ -92,15 +92,9 @@ export function LoginForm({
         return;
       }
 
-      if (payload.exists && !payload.hasPin) {
-        const message =
-          "This number is already on file but has no PIN. Sign in with Google if you linked it, or contact the shop.";
-        setError(message);
-        progress.fail(message);
-        return;
-      }
-
-      progress.succeed("New number. Create your account.");
+      progress.succeed(
+        payload.exists ? "This number has no PIN yet. Create one to continue." : "New number. Create your account.",
+      );
       window.location.assign(`/register?next=${encodeURIComponent(destination)}`);
     } catch {
       const message = "Could not check that number. Please try again.";

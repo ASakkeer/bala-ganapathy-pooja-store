@@ -105,7 +105,7 @@ export function ForgotPinForm({ nextPath }: { nextPath: string }) {
         <div className="rounded-2xl bg-brand/[0.05] px-4 py-4 text-sm leading-relaxed text-muted">
           {result.exists ? (
             <>
-              <p>We cannot send an SMS reset. Call the shop with this number and they can help you set a new PIN.</p>
+              <p>We cannot send an SMS reset. Call the shop with this number. They can clear your PIN so you can create a new one the next time you sign in.</p>
               {result.emailMasked ? <p className="mt-2">This account has email {result.emailMasked} on file.</p> : null}
               {result.hasGoogle ? (
                 <p className="mt-2">

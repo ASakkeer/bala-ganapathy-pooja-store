@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog } from "@/components/ui/dialog";
 import { EmptyNotice } from "@/components/ui/empty-notice";
+import { PhoneField } from "@/components/auth/phone-field";
 import { FieldLabel } from "@/components/ui/field-tip";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/cn";
 import { paiseToRupeeInput, rupeesToPaise } from "@/lib/paise-parse";
+import { digitsOnlyPhoneInput, phoneInputError } from "@/lib/phone";
 
 type SettingsValue = {
   phones: string[];
@@ -27,13 +29,14 @@ type PincodeRow = {
   estimatedDays?: number | null;
 };
 
-type SettingsTab = "contact" | "storefront" | "shipping" | "pincodes";
+type SettingsTab = "contact" | "storefront" | "shipping" | "pincodes" | "login";
 
 const TABS: Array<{ id: SettingsTab; label: string }> = [
   { id: "contact", label: "Contact" },
   { id: "storefront", label: "Storefront" },
   { id: "shipping", label: "Shipping" },
   { id: "pincodes", label: "Pincodes" },
+  { id: "login", label: "Login" },
 ];
 
 const PIN_PAGE_SIZE = 8;
@@ -73,6 +76,9 @@ export function SettingsForm({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [removePin, setRemovePin] = useState("");
+  const [resetPhone, setResetPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [confirmReset, setConfirmReset] = useState(false);
   const progress = useActionProgress();
 
   const filteredPins = useMemo(() => {
@@ -202,6 +208,41 @@ export function SettingsForm({
     }
   }
 
+  async function clearLoginPin() {
+    setPending(true);
+    progress.begin();
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/admin/users/pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ phone: resetPhone }),
+      });
+      const payload = (await response.json()) as { error?: string; hadPin?: boolean; phone?: string };
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Could not clear that PIN.");
+      }
+      setConfirmReset(false);
+      const number = payload.phone ?? resetPhone;
+      setNotice(
+        payload.hadPin
+          ? `PIN cleared for +91 ${number}. They must create a new PIN the next time they sign in.`
+          : `+91 ${number} already had no PIN. They can create one at sign in.`,
+      );
+      progress.succeed("PIN cleared.");
+      setResetPhone("");
+    } catch (clearError) {
+      const message = clearError instanceof Error ? clearError.message : "Could not clear that PIN. Please try again.";
+      setError(message);
+      progress.fail(message);
+      setConfirmReset(false);
+    } finally {
+      setPending(false);
+    }
+  }
+
   const busy = pending || progress.pending;
 
   return (
@@ -226,7 +267,7 @@ export function SettingsForm({
         ))}
       </nav>
 
-      {tab !== "pincodes" ? (
+      {tab !== "pincodes" && tab !== "login" ? (
         <form
           onSubmit={(event) => void saveSettings(event)}
           className="overflow-hidden rounded-[1.25rem] bg-surface ring-1 ring-border/80"
@@ -331,6 +372,49 @@ export function SettingsForm({
             </Button>
           </div>
         </form>
+      ) : tab === "login" ? (
+        <section className="overflow-hidden rounded-[1.25rem] bg-surface ring-1 ring-border/80">
+          <header className="border-b border-border/80 px-5 py-4 sm:px-6">
+            <h2 className="font-medium tracking-tight">Clear a login PIN</h2>
+            <p className="mt-1 text-sm leading-relaxed text-muted">
+              Use this when a customer forgets their PIN. It does not set a new PIN. After you clear it, they sign in
+              with that mobile number and create a PIN again.
+            </p>
+          </header>
+          <form
+            className="flex flex-col gap-5 p-5 sm:p-6"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const message = phoneInputError(resetPhone);
+              if (message) {
+                setPhoneError(message);
+                return;
+              }
+              setPhoneError("");
+              setError("");
+              setNotice("");
+              setConfirmReset(true);
+            }}
+          >
+            <PhoneField
+              id="reset-phone"
+              value={resetPhone}
+              disabled={busy}
+              error={phoneError}
+              onChange={(value) => {
+                setResetPhone(digitsOnlyPhoneInput(value));
+                setPhoneError("");
+              }}
+            />
+            {error ? <p className="text-sm text-danger">{error}</p> : null}
+            {notice ? <p className="text-sm text-success">{notice}</p> : null}
+            <div>
+              <Button type="submit" disabled={busy || resetPhone.length !== 10} className="w-fit">
+                Clear PIN
+              </Button>
+            </div>
+          </form>
+        </section>
       ) : (
         <section className="overflow-hidden rounded-[1.25rem] bg-surface ring-1 ring-border/80">
           <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 px-5 py-4 sm:px-6">
@@ -488,6 +572,19 @@ export function SettingsForm({
             void removePincode(removePin);
           }
         }}
+      />
+      <ConfirmDialog
+        open={confirmReset}
+        title="Clear this PIN?"
+        description={`+91 ${resetPhone} will have no PIN after this. The next sign-in with that number will open Create PIN. Anyone who knows the number can set it until they do.`}
+        confirmLabel="Clear PIN"
+        pending={busy}
+        onCancel={() => {
+          if (!busy) {
+            setConfirmReset(false);
+          }
+        }}
+        onConfirm={() => void clearLoginPin()}
       />
     </div>
   );

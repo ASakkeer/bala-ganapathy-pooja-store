@@ -12,6 +12,7 @@ export async function POST(request: Request) {
         phone: result.phone,
         exists: result.exists,
         hasPin: result.hasPin,
+        needsPinSetup: result.needsPinSetup,
       }),
       result.intentToken,
     );

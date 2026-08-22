@@ -4,6 +4,7 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { RegisterForm } from "@/components/auth/register-form";
 import { STORE_NAME } from "@/lib/constants";
 import { safeNextPath } from "@/lib/login-next";
+import { isPlaceholderProfileName } from "@/lib/profile-cookie";
 import { getSession, readAuthIntent } from "@/server/auth";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +39,7 @@ export default async function RegisterPage({
       <RegisterForm
         nextPath={nextPath}
         initialPhone={intent.phone ?? ""}
-        initialName={intent.name ?? ""}
+        initialName={isPlaceholderProfileName(intent.name ?? "") ? "" : (intent.name ?? "")}
         initialEmail={intent.email ?? intent.googleEmail ?? ""}
         phoneLocked={Boolean(intent.phone)}
         emailLocked={Boolean(intent.googleEmail)}

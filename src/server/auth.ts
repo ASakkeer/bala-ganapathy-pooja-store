@@ -329,16 +329,27 @@ export async function lookupPhone(rawPhone: string, headers: Headers) {
   const user = await findUserByPhone(phone);
   const exists = Boolean(user);
   const hasPin = Boolean(user?.pinHash);
+  const needsPinSetup = exists && !hasPin;
 
-  const intentToken = await writeAuthIntent({
-    phone,
-    stage: exists ? (hasPin ? "pin" : "phone") : "register",
-  });
+  const intentToken = await writeAuthIntent(
+    needsPinSetup
+      ? {
+          phone,
+          name: user?.name,
+          email: user?.email,
+          stage: "set-pin",
+        }
+      : {
+          phone,
+          stage: exists ? "pin" : "register",
+        },
+  );
 
   return {
     phone,
     exists,
     hasPin,
+    needsPinSetup,
     intentToken,
   };
 }
@@ -468,10 +479,6 @@ export async function saveRegistrationDetails(
     throw new AuthError("This number already has an account. Sign in with your PIN.", 409);
   }
 
-  if (existing && !existing.pinHash) {
-    throw new AuthError("This number needs a PIN reset. Contact the shop, then try again.", 409);
-  }
-
   const email = normalizeEmail(intent.googleEmail ?? parsed.data.email);
   const intentToken = await writeAuthIntent({
     phone,
@@ -498,14 +505,19 @@ export async function setPinAndCreateAccount(rawPin: string, rawConfirm: string,
     throw new AuthError("Save your name first, then set a PIN.", 400);
   }
 
-  const name = intent.name?.trim();
-  if (!name || name === PLACEHOLDER_PROFILE_NAME) {
-    throw new AuthError("Enter your name before setting a PIN.", 400);
-  }
-
   const existing = await findUserByPhone(intent.phone);
   if (existing?.pinHash) {
     throw new AuthError("This number already has an account. Sign in with your PIN.", 409);
+  }
+
+  const requestedName = intent.name?.trim();
+  const name =
+    requestedName && requestedName !== PLACEHOLDER_PROFILE_NAME
+      ? requestedName
+      : existing?.name?.trim();
+
+  if (!name) {
+    throw new AuthError("Enter your name before setting a PIN.", 400);
   }
 
   const pinHash = await hashPin(pin);
@@ -521,6 +533,10 @@ export async function setPinAndCreateAccount(rawPin: string, rawConfirm: string,
       googleSub: intent.googleSub ?? existing.googleSub,
     });
     return issueSession(signedIn);
+  }
+
+  if (name === PLACEHOLDER_PROFILE_NAME) {
+    throw new AuthError("Enter your name before setting a PIN.", 400);
   }
 
   const created = await createUser({
@@ -596,6 +612,24 @@ export async function forgotPinInfo(rawPhone: string, headers: Headers) {
     hasGoogle: Boolean(user?.googleSub),
     emailMasked: user?.email ? maskEmail(user.email) : null,
   };
+}
+
+export async function adminClearPin(rawPhone: string) {
+  const phone = requirePhone(rawPhone);
+  const user = await findUserByPhone(phone);
+  if (!user) {
+    throw new AuthError("No account for that number.", 404);
+  }
+
+  const hadPin = Boolean(user.pinHash);
+  await persistUser({
+    ...user,
+    pinHash: null,
+    pinFailedAttempts: 0,
+    pinLockedUntil: null,
+  });
+
+  return { phone, hadPin };
 }
 
 export const getSession = cache(async (): Promise<SessionPayload | null> => {
